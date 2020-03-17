@@ -69,31 +69,32 @@ module.exports = {
         })
   },
   async createArticle (req, res, next) {
-    console.log('createArticle: ' + req.body.data.title)
+    console.log(req.body)
     try {
-      const uid = await auth.verifyIdToken(req.body.token)
-      console.log('uid: ' + uid)
-      const data = req.body.data
+      // const uid = await auth.verifyIdToken(req.body.token)
+      // console.log('uid: ' + uid)
+      const data = req.body
       const article = new Article({
         title: data.title,
-        tags: data.tags,
-        blocks: data.blocks,
-        entityMap: data.entityMap,
-        timeStamp: new Date()
+        category: [],
+        content: {
+          blocks: JSON.parse(data.blocks),
+          entityMap: JSON.parse(data.entityMap)
+        }
       })
       // 需要對uid進行log寫入
 
       await article.save().then(result => {
         console.log(result)
+        res.status(200).send({
+          code: 200,
+          type: 'success',
+          id: result.id
+        })
         return Promise.resolve()
       }).catch(error => {
         console.error(error)
         return Promise.reject(error)
-      })
-      res.json({
-        code: 200,
-        type: 'success',
-        message: '已成功新增文章'
       })
     } catch (error) {
       res.status(500).send({

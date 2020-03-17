@@ -24,18 +24,38 @@ const blocksSchema = new Schema({
 })
 
 const articleSchema = new mongoose.Schema({
-  articleId: ObjectId,
   title: {
     type: String,
     required: true
   },
-  tags: [String],
-  blocks: [blocksSchema],
-  entityMap: {},
-  timeStamp: {
+  category: [],
+  createdAt: {
     type: Date,
     default: Date.now
+  },
+  isPopular: {
+    type: Boolean,
+    default: false
+  },
+  editingCount: {
+    type: Number,
+    default: 0
+  },
+  editedCount: {
+    type: Number,
+    default: 1
+  },
+  content: {
+    category: String,
+    tags: [String],
+    blocks: [blocksSchema],
+    entityMap: {},
+    timeStamp: {
+      type: Date,
+      default: Date.now
+    }
   }
+
 })
 
 const article = mongoose.model('Article', articleSchema, 'Articles')
