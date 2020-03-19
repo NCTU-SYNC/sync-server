@@ -53,17 +53,17 @@ module.exports = {
               message: '文章的ID輸入有誤，請重新查詢'
             })
           } else {
-            const newDoc = {
+            /* const newDoc = {
               tags: doc.tags,
               title: doc.title,
               blocks: doc.blocks,
               entityMap: doc.entityMap,
               timeStamp: doc.timeStamp
-            }
+            } */
             res.json({
               code: 200,
               type: 'success',
-              data: newDoc
+              data: doc
             })
           }
         })
