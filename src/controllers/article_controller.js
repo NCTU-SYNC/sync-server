@@ -21,12 +21,11 @@ module.exports = {
             $options: 'i'
           }
         }]
-      })
-      .limit(limit)
+      }, null, { limit: limit, sort: { _id: -1 } })
       .exec(
         (err, doc) => {
           if (err || doc.length === 0) {
-            res.status(404).send({
+            res.status(200).send({
               code: 404,
               type: 'success',
               message: '查無搜尋結果'
@@ -69,6 +68,7 @@ module.exports = {
         })
   },
   async createArticle (req, res, next) {
+    console.log('createArticle')
     console.log(req.body)
     try {
       // const uid = await auth.verifyIdToken(req.body.token)
@@ -76,11 +76,11 @@ module.exports = {
       const data = req.body
       const article = new Article({
         title: data.title,
+        tags: data.tags,
+        authors: data.authors,
         category: [],
-        content: {
-          blocks: JSON.parse(data.blocks),
-          entityMap: JSON.parse(data.entityMap)
-        }
+        createAt: new Date(data.createAt),
+        blocks: data.blocks
       })
       // 需要對uid進行log寫入
 
@@ -89,14 +89,20 @@ module.exports = {
         res.status(200).send({
           code: 200,
           type: 'success',
+          message: '成功發布新文章',
           id: result.id
         })
         return Promise.resolve()
       }).catch(error => {
-        console.error(error)
+        res.status(200).send({
+          code: 500,
+          type: 'error',
+          message: '請輸入標題'
+        })
         return Promise.reject(error)
       })
     } catch (error) {
+      console.log(error)
       res.status(500).send({
         code: 500,
         type: 'error',
@@ -108,25 +114,32 @@ module.exports = {
     console.log('updateArticleById: ' + req.body.id)
 
     try {
-      const uid = await auth.verifyIdToken(req.body.token)
-      console.log('uid: ' + uid)
+      // 使用者登入用
+      // const uid = await auth.verifyIdToken(req.body.token)
+      // console.log('uid: ' + uid)
       const id = req.body.id
-      const patches = req.body.data
+      console.log(id)
+      // JsonPatch http://jsonpatch.com/
+      // 需要實作判斷更新功能
+      // const patches = req.body.blocks
 
       var article = await Article.findById(id).lean()
       if (article === undefined) {
-        res.status(500).send({
+        console.log(article)
+        res.status(200).send({
           code: 500,
           type: 'error',
           message: '文章的ID輸入有誤，請重新查詢'
         })
       } else {
-        var errors = jsonpatch.validate(patches, article)
+        // var errors = jsonpatch.validate(patches, article)
+        var errors = undefined
         if (errors === undefined) {
-          var updateObj = jsonpatch.applyPatch(article, patches).newDocument
-          Article.findOneAndUpdate(id, updateObj, { new: true, upsert: true }, (err, doc) => {
+          // var updateObj = jsonpatch.applyPatch(article, patches).newDocument
+          var updateObj = req.body
+          Article.findOneAndUpdate({ _id: id }, updateObj, { new: true, upsert: true }, (err, doc) => {
             if (err) {
-              res.status(500).send({
+              res.status(200).send({
                 code: 500,
                 type: 'error',
                 message: '更新文章時發生錯誤'
@@ -139,9 +152,11 @@ module.exports = {
               data: doc,
               message: '已成功更新文章'
             })
+            module.exports.updateArticleEditingCount(id)
           })
         } else {
-          res.status(500).send({
+          console.log(errors)
+          res.status(200).send({
             code: 500,
             type: 'error',
             message: errors.message
@@ -149,11 +164,22 @@ module.exports = {
         }
       }
     } catch (error) {
-      res.status(500).send({
+      console.log(error)
+      res.status(200).send({
         code: 500,
         type: 'error',
         message: error.message
       })
     }
+  },
+  updateArticleEditingCount (articleId) {
+    Article.findOneAndUpdate({ _id: articleId }, { $inc: { editedCount: 1 } }, { new: true, upsert: true }, (err, doc) => {
+      if (err) {
+        console.log(err)
+      } else {
+        console.log(doc)
+        console.log('已更新', articleId)
+      }
+    })
   }
 }

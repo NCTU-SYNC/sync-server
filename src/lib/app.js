@@ -1,10 +1,10 @@
 const express = require('express')
 const bodyParser = require('body-parser')
 const helmet = require('helmet')
-/* const {
+const {
   resolve
 } = require('path')
-const { join } = require('path') */
+// const { join } = require('path')
 const config = require('../../config/config')
 
 const app = express()
@@ -34,11 +34,10 @@ db.on('error', console.error.bind(console, 'MongoDB connection error:'))
 /*
 const backendPublicPath = resolve(__dirname, '../../../backend/dist')
 app.use('/backend', express.static(backendPublicPath))
-
-const frontendPublicPath = resolve(__dirname, '../../../frontend/out')
-app.use('/', express.static(frontendPublicPath))
-console.log('Frontend: ' + frontendPublicPath)
 */
+const frontendPublicPath = resolve(__dirname, '../../../frontend/dist')
+app.use('/', express.static(frontendPublicPath))
+
 app.use(bodyParser.json())
 app.use(helmet())
 
@@ -55,8 +54,8 @@ const backendRouter = require('../routes/backend')
 app.use('/backend', backendRouter)
 
 const frontendRouter = require('../routes/frontend')
-app.use('/', frontendRouter)
-*/
+app.use('/', frontendRouter) */
+
 // app.use(require('./middleware/error_middleware').all)
 
 module.exports = app

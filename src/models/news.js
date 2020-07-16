@@ -12,5 +12,5 @@ const newsSchema = new mongoose.Schema({
   outline: String
 })
 
-const article = mongoose.model('News', newsSchema, 'test')
-module.exports = article
+const news = mongoose.model('News', newsSchema, 'News')
+module.exports = news

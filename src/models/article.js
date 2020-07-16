@@ -1,25 +1,22 @@
 const mongoose = require('mongoose')
 const Schema = mongoose.Schema
 
-const blocksSchema = new Schema({
-  type: {
-    type: String,
-    required: true,
-    validate: {
-      validator: (v) => {
-        return /unstyled|title|subtitle|atomic/.test(v)
-      },
-      message: (props) => `${props.value} 為錯誤的類型`
-    }
+const blockSchema = new mongoose.Schema({
+  id: {
+    type: Number,
+    required: true
   },
-  text: String,
-  entityRanges: [
-    {
-      key: Number,
-      offset: Number,
-      length: Number
-    }
-  ]
+  blockTitle: {
+    type: String,
+    require: true
+  },
+  blockDateTime: {
+    type: Date,
+    required: true
+  },
+  content: {
+    type: Object
+  }
 })
 
 const articleSchema = new mongoose.Schema({
@@ -27,11 +24,27 @@ const articleSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  category: [],
+  tags: {
+    type: Array,
+    default: []
+  },
+  authors: {
+    type: Array,
+    require: true,
+    default: []
+  },
+  category: {
+    type: Array,
+    default: []
+  },
   createdAt: {
     type: Date,
     default: Date.now
   },
+  lastUpdatedAt: {
+    type: Date,
+    default: Date.now
+  },  
   isPopular: {
     type: Boolean,
     default: false
@@ -44,17 +57,7 @@ const articleSchema = new mongoose.Schema({
     type: Number,
     default: 1
   },
-  content: {
-    category: String,
-    tags: [String],
-    blocks: [blocksSchema],
-    entityMap: {},
-    timeStamp: {
-      type: Date,
-      default: Date.now
-    }
-  }
-
+  blocks: [blockSchema]
 })
 
 const article = mongoose.model('Article', articleSchema, 'Articles')

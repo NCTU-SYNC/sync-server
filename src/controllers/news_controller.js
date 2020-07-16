@@ -3,8 +3,9 @@ const News = require('../models/news')
 module.exports = {
   getNews (req, res, next) {
     const keyword = req.query.q || ''
-    const limit = Number(req.query.limit)
-    console.log('getNews: ' + keyword + ',' + limit)
+    const checkQueryLimit = Number(req.query.limit)
+    const limit = isNaN(checkQueryLimit)? 20 : checkQueryLimit
+    console.log('getNews: ' + keyword + ', ' + limit)
     News.find({
       $or: [
         {
@@ -14,14 +15,13 @@ module.exports = {
           }
         },
         {
-          outline: {
+          content: {
             $regex: keyword,
             $options: 'i'
           }
         }
       ]
-    })
-      .limit(limit)
+    }, null, {limit: limit, sort: {'_id': -1}})
       .exec((err, doc) => {
         if (err || doc.length === 0) {
           res.json({
