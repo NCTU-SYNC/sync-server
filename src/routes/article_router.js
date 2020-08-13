@@ -13,4 +13,7 @@ router.route('/article')
 router.route('/article')
   .put(ctrl.updateArticleById)
 
+router.route('/article/:id/authors')
+  .get(ctrl.getArticleAuthors)
+
 module.exports = router

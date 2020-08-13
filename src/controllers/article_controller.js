@@ -40,32 +40,36 @@ module.exports = {
         })
   },
   getArticleById (req, res, next) {
-    console.log('getArticleById: ' + req.params.id)
-    Article
-      .findById(req.params.id)
-      .exec(
-        (err, doc) => {
-          if (err) {
-            res.status(500).send({
-              code: 500,
-              type: 'error',
-              message: '文章的ID輸入有誤，請重新查詢'
-            })
-          } else {
-            /* const newDoc = {
-              tags: doc.tags,
-              title: doc.title,
-              blocks: doc.blocks,
-              entityMap: doc.entityMap,
-              timeStamp: doc.timeStamp
-            } */
-            res.json({
-              code: 200,
-              type: 'success',
-              data: doc
-            })
-          }
-        })
+    try {
+      console.log('getArticleById: ' + req.params.id)
+      Article
+        .findById(req.params.id)
+        .exec(
+          async (err, doc) => {
+            if (err) {
+              res.status(500).send({
+                code: 500,
+                type: 'error',
+                message: '文章的ID輸入有誤，請重新查詢'
+              })
+            } else {
+              doc.authors = await module.exports.getArticleAuthorsByAuthorIds(doc.authors)
+              console.log(doc.authors, 'result')
+              res.json({
+                code: 200,
+                type: 'success',
+                data: doc
+              })
+            }
+          })
+    } catch (error) {
+      console.log(error)
+      res.json({
+        code: 200,
+        type: 'error',
+        message: '發生未知的錯誤，請稍後再試'
+      })
+    }
   },
   async createArticle (req, res, next) {
     console.log('createArticle')
@@ -181,5 +185,37 @@ module.exports = {
         console.log('已更新', articleId)
       }
     })
+  },
+  async getArticleAuthorsByAuthorIds (authors) {
+    try {
+      const authorsArray = []
+      for (const authorId of authors) {
+        const { displayName } = await auth.getUserInfoById(authorId)
+        authorsArray.push({ uid: authorId, displayName: displayName })
+      }
+      return Promise.resolve(authorsArray)
+    } catch (error) {
+      console.log(error)
+      return Promise.reject(error)
+    }
+  },
+  async getArticleAuthors (req, res, next) {
+    try {
+      const articleId = req.params.id
+      const doc = await Article.findById(articleId).exec()
+      const authors = []
+      for (const authorId of doc.authors) {
+        const { displayName } = await auth.getUserInfoById(authorId)
+        authors.push({ uid: authorId, displayName: displayName })
+      }
+      res.status(200).send({
+        code: 200,
+        type: 'success',
+        data: authors,
+        message: '已成功抓取作者'
+      })
+    } catch (error) {
+      console.log(error)
+    }
   }
 }
