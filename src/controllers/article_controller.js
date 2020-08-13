@@ -40,36 +40,25 @@ module.exports = {
         })
   },
   getArticleById (req, res, next) {
-    try {
-      console.log('getArticleById: ' + req.params.id)
-      Article
-        .findById(req.params.id)
-        .exec(
-          async (err, doc) => {
-            if (err) {
-              res.status(500).send({
-                code: 500,
-                type: 'error',
-                message: '文章的ID輸入有誤，請重新查詢'
-              })
-            } else {
-              doc.authors = await module.exports.getArticleAuthorsByAuthorIds(doc.authors)
-              console.log(doc.authors, 'result')
-              res.json({
-                code: 200,
-                type: 'success',
-                data: doc
-              })
-            }
-          })
-    } catch (error) {
-      console.log(error)
-      res.json({
-        code: 200,
-        type: 'error',
-        message: '發生未知的錯誤，請稍後再試'
-      })
-    }
+    console.log('getArticleById: ' + req.params.id)
+    Article
+      .findById(req.params.id)
+      .exec(
+        async (err, doc) => {
+          if (err) {
+            res.status(500).send({
+              code: 500,
+              type: 'error',
+              message: '文章的ID輸入有誤，請重新查詢'
+            })
+          } else {
+            res.json({
+              code: 200,
+              type: 'success',
+              data: doc
+            })
+          }
+        })
   },
   async createArticle (req, res, next) {
     console.log('createArticle')
@@ -189,9 +178,9 @@ module.exports = {
   async getArticleAuthorsByAuthorIds (authors) {
     try {
       const authorsArray = []
-      for (const authorId of authors) {
-        const { displayName } = await auth.getUserInfoById(authorId)
-        authorsArray.push({ uid: authorId, displayName: displayName })
+      for (const author of authors) {
+        const { displayName } = await auth.getUserInfoById(author.uid)
+        authorsArray.push({ uid: author.uid, displayName: displayName })
       }
       return Promise.resolve(authorsArray)
     } catch (error) {
