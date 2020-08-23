@@ -193,9 +193,9 @@ module.exports = {
       const articleId = req.params.id
       const doc = await Article.findById(articleId).exec()
       const authors = []
-      for (const authorId of doc.authors) {
-        const { displayName } = await auth.getUserInfoById(authorId)
-        authors.push({ uid: authorId, displayName: displayName })
+      for (const author of doc.authors) {
+        const { displayName } = await auth.getUserInfoById(author.uid)
+        authors.push({ uid: author.uid, displayName: displayName })
       }
       res.status(200).send({
         code: 200,
