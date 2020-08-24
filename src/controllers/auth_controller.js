@@ -7,7 +7,7 @@ const auth = {
       const token = req.body.idToken
       const uid = await auth.verifyIdToken(token)
       console.log('login uid: ' + uid)
-      firebase.db.collection('users').doc(uid).set(req.body)
+      firebase.db.collection('users').doc(uid).set(req.body, { merge: true })
       res.status(200).send({
         code: 200,
         type: 'success',
