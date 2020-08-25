@@ -1,3 +1,5 @@
+var firebase = require('../lib/firebase')
+var admin = require('firebase-admin')
 var Article = require('../models/article')
 const auth = require('../controllers/auth_controller')
 // const mongoose = require('mongoose')
@@ -110,7 +112,7 @@ module.exports = {
       // 使用者登入用
       // const uid = await auth.verifyIdToken(req.body.token)
       // console.log('uid: ' + uid)
-      const id = req.body.id
+      const { id, uid } = req.body
       console.log(id)
       // JsonPatch http://jsonpatch.com/
       // 需要實作判斷更新功能
@@ -146,6 +148,7 @@ module.exports = {
               message: '已成功更新文章'
             })
             module.exports.updateArticleEditingCount(id)
+            module.exports.storeArticleIdToFirestore(uid, id)
           })
         } else {
           console.log(errors)
@@ -206,5 +209,13 @@ module.exports = {
     } catch (error) {
       console.log(error)
     }
+  },
+  async storeArticleIdToFirestore (uid, articleId) {
+    const userRef = firebase.db.collection('users').doc(uid)
+    userRef.update({
+      editPostIds: admin.firestore.FieldValue.arrayUnion(articleId)
+    })
+      .then(res => console.log(res))
+      .catch(err => console.log(err))
   }
 }
