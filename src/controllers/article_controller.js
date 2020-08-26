@@ -87,6 +87,7 @@ module.exports = {
           message: '成功發布新文章',
           id: result.id
         })
+        module.exports.storeArticleIdToFirestore(data.uid, result.id)
         return Promise.resolve()
       }).catch(error => {
         res.status(200).send({
