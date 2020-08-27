@@ -1,7 +1,10 @@
 var Article = require('../models/article')
 const auth = require('../controllers/auth_controller')
+const same = require('../controllers/same_controller')
 // const mongoose = require('mongoose')
 const jsonpatch = require('fast-json-patch')
+
+const ObjectId = require('mongodb').ObjectId;
 
 module.exports = {
   getArticles (req, res, next) {
@@ -82,6 +85,16 @@ module.exports = {
         createAt: new Date(data.createAt),
         blocks: data.blocks
       })
+      for (var block in article.blocks) {
+        console.log({block})
+        article.blocks[block]["blockRevision"] = 1
+        console.log(article.blocks[block]["blockRevision"])
+        console.log(article.blocks[block]["content"])
+      }
+      // article.blocks = article.blocks.map((val)=>　({...val, blockRevision:123}))
+      console.log("############")
+      console.log(article)
+      console.log("############")
       // 需要對uid進行log寫入
 
       await article.save().then(result => {
@@ -124,6 +137,8 @@ module.exports = {
       // const patches = req.body.blocks
 
       var article = await Article.findById(id).lean()
+      console.log(article)
+      article.blocks.bloc
       if (article === undefined) {
         console.log(article)
         res.status(200).send({
@@ -137,6 +152,17 @@ module.exports = {
         if (errors === undefined) {
           // var updateObj = jsonpatch.applyPatch(article, patches).newDocument
           var updateObj = req.body
+          for (var block in updateObj["blocks"]) {
+            // if (updateObj["blocks"][block].hasOwnProperty("blockRevision")) {
+            //   updateObj["blocks"][block]["blockRevision"] += 1
+            // }
+            // else
+            //   updateObj["blocks"][block]["blockRevision"] = 1
+            // updateObj["blocks"][block]["blockTitle"] = "華視"
+            // console.log(updateObj)
+            if( !await same.compareContent(updateObj["blocks"][block]["content"]["content"][0]["content"][0]["text"], article["blocks"][block]["content"]["content"][0]["content"][0]["text"]))
+              updateObj["blocks"][block]["blockRevision"] += 1
+          }
           Article.findOneAndUpdate({ _id: id }, updateObj, { new: true, upsert: true }, (err, doc) => {
             if (err) {
               res.status(200).send({
