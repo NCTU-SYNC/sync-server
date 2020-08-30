@@ -1,3 +1,5 @@
+var firebase = require('../lib/firebase')
+var admin = require('firebase-admin')
 var Article = require('../models/article')
 const auth = require('../controllers/auth_controller')
 const same = require('../controllers/same_controller')
@@ -47,7 +49,7 @@ module.exports = {
     Article
       .findById(req.params.id)
       .exec(
-        (err, doc) => {
+        async (err, doc) => {
           if (err) {
             res.status(500).send({
               code: 500,
@@ -55,13 +57,6 @@ module.exports = {
               message: '文章的ID輸入有誤，請重新查詢'
             })
           } else {
-            /* const newDoc = {
-              tags: doc.tags,
-              title: doc.title,
-              blocks: doc.blocks,
-              entityMap: doc.entityMap,
-              timeStamp: doc.timeStamp
-            } */
             res.json({
               code: 200,
               type: 'success',
@@ -105,6 +100,7 @@ module.exports = {
           message: '成功發布新文章',
           id: result.id
         })
+        module.exports.storeArticleIdToFirestore(data.uid, result.id)
         return Promise.resolve()
       }).catch(error => {
         res.status(200).send({
@@ -130,7 +126,7 @@ module.exports = {
       // 使用者登入用
       // const uid = await auth.verifyIdToken(req.body.token)
       // console.log('uid: ' + uid)
-      const id = req.body.id
+      const { id, uid } = req.body
       console.log(id)
       // JsonPatch http://jsonpatch.com/
       // 需要實作判斷更新功能
@@ -179,6 +175,7 @@ module.exports = {
               message: '已成功更新文章'
             })
             module.exports.updateArticleEditingCount(id)
+            module.exports.storeArticleIdToFirestore(uid, id)
           })
         } else {
           console.log(errors)
@@ -207,5 +204,45 @@ module.exports = {
         console.log('已更新', articleId)
       }
     })
+  },
+  async getArticleAuthorsByAuthorIds (authors) {
+    try {
+      const authorsArray = []
+      for (const author of authors) {
+        const { displayName } = await auth.getUserInfoById(author.uid)
+        authorsArray.push({ uid: author.uid, displayName: displayName })
+      }
+      return Promise.resolve(authorsArray)
+    } catch (error) {
+      console.log(error)
+      return Promise.reject(error)
+    }
+  },
+  async getArticleAuthors (req, res, next) {
+    try {
+      const articleId = req.params.id
+      const doc = await Article.findById(articleId).exec()
+      const authors = []
+      for (const author of doc.authors) {
+        const { displayName } = await auth.getUserInfoById(author.uid)
+        authors.push({ uid: author.uid, displayName: displayName })
+      }
+      res.status(200).send({
+        code: 200,
+        type: 'success',
+        data: authors,
+        message: '已成功抓取作者'
+      })
+    } catch (error) {
+      console.log(error)
+    }
+  },
+  async storeArticleIdToFirestore (uid, articleId) {
+    const userRef = firebase.db.collection('users').doc(uid)
+    userRef.update({
+      editPostIds: admin.firestore.FieldValue.arrayUnion(articleId)
+    })
+      .then(res => console.log(res))
+      .catch(err => console.log(err))
   }
 }
