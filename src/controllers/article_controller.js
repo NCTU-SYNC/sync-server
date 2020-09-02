@@ -134,7 +134,6 @@ module.exports = {
 
       var article = await Article.findById(id).lean()
       console.log(article)
-      article.blocks.bloc
       if (article === undefined) {
         console.log(article)
         res.status(200).send({
