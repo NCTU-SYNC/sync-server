@@ -1,8 +1,8 @@
 const mongoose = require('mongoose')
 const Schema = mongoose.Schema
 
-const revisionSchema = new mongoose.Schema({
-  block_id: {
+const blockSchema = new mongoose.Schema({
+  blockId: {
     type: Number,
     required: true
   },
@@ -15,13 +15,19 @@ const revisionSchema = new mongoose.Schema({
     required: true
   },
   content: {
-    type: Object
+    type: String
+    required: true
   },
   blockRevision: {
     type: Number,
     required: true
   }
+  author: {
+    type: Array,
+    require: true,
+    default: []
+  },
 })
 
-const revision = mongoose.model('Revision', revisionSchema, 'revision')
-module.exports = revision
+const block = mongoose.model('Block', blockSchema, 'Blocks')
+module.exports = block

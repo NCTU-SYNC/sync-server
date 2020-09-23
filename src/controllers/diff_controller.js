@@ -1,7 +1,7 @@
 var jsdiff = require('diff')
-const same = {
+const diff = {
   async compareContent (text1, text2) {
-  	var diff = jsdiff.diffSentences(text1, text2)
+  	var diff = jsdiff.diffJson(text1, text2)
   	if (diff.length == 1)
   		return true
   	else
@@ -12,4 +12,4 @@ const same = {
   }
 
 }
-module.exports = same
+module.exports = diff
