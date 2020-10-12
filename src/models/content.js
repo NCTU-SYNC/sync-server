@@ -1,17 +1,19 @@
 const mongoose = require('mongoose')
 const Schema = mongoose.Schema
 
+ObjectId = Schema.ObjectId
+
 const contentSchema = new mongoose.Schema({
-  id: {
-    type: Number,
+  contentId: {
+    type: ObjectId,
     required: true
   },
   blockId: {
-    type: Number,
+    type: ObjectId,
     required: true
   },
   articleId: {
-    type: Number,
+    type: ObjectId,
     required: true
   },
   content: {
@@ -19,5 +21,5 @@ const contentSchema = new mongoose.Schema({
   }
 })
 
-const content = mongoose.model('Content', blockSchema, 'Content')
+const content = mongoose.model('Content', contentSchema, 'Content')
 module.exports = content
