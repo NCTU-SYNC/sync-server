@@ -4,10 +4,6 @@ const Schema = mongoose.Schema
 ObjectId = Schema.ObjectId
 
 const revisionSchema = new mongoose.Schema({
-  revisionId: {
-    type: ObjectId,
-    require: true
-  },
   updatedAt: {
     type: Date,
     required: true
@@ -17,7 +13,7 @@ const revisionSchema = new mongoose.Schema({
     required: true
   },
   author: {
-    type: Number,
+    type: String,
     require: true,
   }
 })

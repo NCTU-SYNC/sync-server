@@ -10,6 +10,29 @@ const jsonpatch = require('fast-json-patch')
 const mongoose = require('mongoose')
 const ObjectId = require('mongodb').ObjectId;
 
+async function createNewBlock(recBlock, articleId) {
+    var newContent = new Content({
+      blockId: recBlock["_id"],
+      articleId: articleId,
+      content: recBlock["content"]
+    })
+    var newBlock = new Block({
+      blockId: recBlock["_id"],
+      articleId: articleId,
+      revisions: [{
+        updatedAt: new Date(),
+        contentId: mongoose.Types.ObjectId(),
+        author: ""
+      }]
+    })
+    await newContent.save().then(result => {
+      console.log("########")
+      console.log(result)
+      console.log("########")
+    })
+    await newBlock.save()
+}
+
 module.exports = {
   getArticles (req, res, next) {
     const keyword = req.query.q || ''
@@ -94,28 +117,7 @@ module.exports = {
       console.log("############")
       // 需要對uid進行log寫入
       for (var block in article["blocks"]) {
-        var newBlock = new Block({
-          blockId: article["blocks"][block]["_id"],
-          articleId: article._id,
-          revisions: [{
-            revisionId: mongoose.Types.ObjectId(),
-            updatedAt: new Date(),
-            contentId: mongoose.Types.ObjectId(),
-            author: ""
-          }]
-        })
-        var newContent = new Content({
-          contentId: newBlock.revisions[0].contentId,
-          blockId: newBlock.blockId,
-          articleId: newBlock.articleId,
-          content: article["blocks"][block]["content"]
-        })
-        await newBlock.save()
-        await newContent.save().then(result => {
-          console.log("########")
-          console.log(result)
-          console.log("########")
-        })
+        await createNewBlock(article["blocks"][block], article._id)
       }
       await article.save().then(result => {
         console.log(result)
@@ -173,32 +175,53 @@ module.exports = {
         if (errors === undefined) {
           // var updateObj = jsonpatch.applyPatch(article, patches).newDocument
           var updateObj = req.body
+          times = 1
           for (var block in updateObj["blocks"]) {
+            times+=1
             if (!updateObj["blocks"][block].hasOwnProperty("blockRevision")) {
+              console.log("if")
+              console.log(times)
               updateObj["blocks"][block]["blockRevision"] = 1
+              updateObj["blocks"][block]["_id"] = mongoose.Types.ObjectId()
+              await createNewBlock(updateObj["blocks"][block], article["_id"])
             }
-            if( await diff.compareContent(updateObj["blocks"][block]["content"], article["blocks"][block]["content"])) { 
-              updateObj["blocks"][block]["blockRevision"] += 1
-              recentBlockRevision = updateObj["blocks"][block]["blockRevision"]
-              // const newBlock = new Block({
-              //   blockId: article["blocks"][block]["_id"],
-              //   articleId: req.body.id,
-              //   revisions: [{
-              //     revisionId: mongoose.Types.ObjectId(),
-              //     updatedAt: new Date(),
-              //     content: article["blocks"][block]["content"],
-              //     author: ""
-              //   }]
-              // })
-              // console.log("########")
-              // console.log(newBlock)
-              // console.log("########")
-              // await newBlock.save().then(result => {
-              //   console.log("########")
-              //   console.log(result)
-              //   console.log("########")
-              // })  
+            else {
+              console.log("else")
+              console.log(times)
+              for (var articleBlock in article["blocks"]) {
+                if (updateObj["blocks"][block]["blockId"] == article["blocks"][articleBlock]["blockId"]) {
+                  if (await diff.compareContent(updateObj["blocks"][block]["content"], article["blocks"][block]["content"])) {
+                    updateObj["blocks"][block]["blockRevision"] += 1
+                    var newBlock = await Block.findOne({ blockId: updateObj["blocks"][block]["_id"] })
+                    console.log("ABBB")
+                    console.log(article["blocks"][articleBlock]["_id"])
+                    var newContent = new Content({
+                      blockId: article["blocks"][articleBlock]["_id"],
+                      articleId: article["_id"],
+                      content: article["blocks"][articleBlock]["content"],
+                    })
+                    await newContent.save().then(result => {
+                      console.log("########")
+                      console.log(result)
+                      console.log("########")
+                    })
+                    var thisRevision = {
+                      "updatedAt": new Date(),
+                      "contentId": newContent["_id"],
+                      "author": ""
+                    }
+                    newBlock.revisions.push(thisRevision)
+                    await Block.findOneAndUpdate({ blockId: updateObj["blocks"][block]["_id"] }, newBlock, { new: true, upsert: true }).then(result => {
+                      console.log("########")
+                      console.log(result)
+                      console.log("########")
+                    })
+                  }
+                }
+                break
+              }
             }
+          
           }
           Article.findOneAndUpdate({ _id: id }, updateObj, { new: true, upsert: true }, (err, doc) => {
             if (err) {

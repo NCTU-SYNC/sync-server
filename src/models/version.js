@@ -1,24 +1,26 @@
 const mongoose = require('mongoose')
 const Schema = mongoose.Schema
 
+ObjectId = Schema.ObjectId
+
 const blockSchema = new mongoose.Schema({
-  blockId: {
-    type: Number,
+  contentId: {
+    type: ObjectId,
     required: true
   },
-  revisionId: {
+  order: {
     type: Number,
     required: true
-  },
+  }
 })
 
 const versionSchema = new mongoose.Schema({
-  id: {
+  version: {
     type: Number,
     required: true
   },
   articleId: {
-    type: Number,
+    type: ObjectId,
     required: true
   },
   blocks: [blockSchema]
