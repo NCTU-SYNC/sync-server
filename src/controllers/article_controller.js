@@ -11,11 +11,6 @@ const mongoose = require('mongoose')
 const ObjectId = require('mongodb').ObjectId;
 
 async function createNewBlock(recBlock, articleId) {
-    var newContent = new Content({
-      blockId: recBlock["_id"],
-      articleId: articleId,
-      content: recBlock["content"]
-    })
     var newBlock = new Block({
       blockId: recBlock["_id"],
       articleId: articleId,
@@ -25,10 +20,16 @@ async function createNewBlock(recBlock, articleId) {
         author: ""
       }]
     })
+    var newContent = new Content({
+      _id: newBlock["revisions"][0]["contentId"],
+      blockId: recBlock["_id"],
+      articleId: articleId,
+      content: recBlock["content"]
+    })
     await newContent.save().then(result => {
-      console.log("########")
-      console.log(result)
-      console.log("########")
+      // console.log("########")
+      // console.log(result)
+      // console.log("########")
     })
     await newBlock.save()
 }
@@ -175,19 +176,13 @@ module.exports = {
         if (errors === undefined) {
           // var updateObj = jsonpatch.applyPatch(article, patches).newDocument
           var updateObj = req.body
-          times = 1
           for (var block in updateObj["blocks"]) {
-            times+=1
             if (!updateObj["blocks"][block].hasOwnProperty("blockRevision")) {
-              console.log("if")
-              console.log(times)
               updateObj["blocks"][block]["blockRevision"] = 1
               updateObj["blocks"][block]["_id"] = mongoose.Types.ObjectId()
               await createNewBlock(updateObj["blocks"][block], article["_id"])
             }
             else {
-              console.log("else")
-              console.log(times)
               for (var articleBlock in article["blocks"]) {
                 if (updateObj["blocks"][block]["blockId"] == article["blocks"][articleBlock]["blockId"]) {
                   if (await diff.compareContent(updateObj["blocks"][block]["content"], article["blocks"][block]["content"])) {
@@ -201,9 +196,9 @@ module.exports = {
                       content: article["blocks"][articleBlock]["content"],
                     })
                     await newContent.save().then(result => {
-                      console.log("########")
-                      console.log(result)
-                      console.log("########")
+                      // console.log("########")
+                      // console.log(result)
+                      // console.log("########")
                     })
                     var thisRevision = {
                       "updatedAt": new Date(),
@@ -212,9 +207,9 @@ module.exports = {
                     }
                     newBlock.revisions.push(thisRevision)
                     await Block.findOneAndUpdate({ blockId: updateObj["blocks"][block]["_id"] }, newBlock, { new: true, upsert: true }).then(result => {
-                      console.log("########")
-                      console.log(result)
-                      console.log("########")
+                      // console.log("########")
+                      // console.log(result)
+                      // console.log("########")
                     })
                   }
                 }
