@@ -18,6 +18,7 @@
     "fast-json-patch": "^3.0.0-1",
     "firebase-admin": "^8.13.0",
     "helmet": "^3.23.3",
+    "jsondiffpatch": "^0.4.1",
     "mongoose": "^5.9.26",
     "nodemon": "^1.19.4"
   },

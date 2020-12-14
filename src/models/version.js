@@ -8,6 +8,10 @@ const blockSchema = new mongoose.Schema({
     type: ObjectId,
     required: true
   },
+  revisionId: {
+    type: ObjectId,
+    required: true
+  },
   order: {
     type: Number,
     required: true
@@ -26,5 +30,5 @@ const versionSchema = new mongoose.Schema({
   blocks: [blockSchema]
 })
 
-const version = mongoose.model('Version', blockSchema, 'Versions')
+const version = mongoose.model('Version', versionSchema, 'Versions')
 module.exports = version

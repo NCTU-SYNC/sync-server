@@ -3,10 +3,11 @@ var admin = require('firebase-admin')
 var Article = require('../models/article')
 var Block = require('../models/block')
 var Content = require('../models/content')
+var Version = require('../models/version')
 const auth = require('../controllers/auth_controller')
 const diff = require('../controllers/diff_controller')
 // const mongoose = require('mongoose')
-const jsonpatch = require('fast-json-patch')
+//const jsonpatch = require('fast-json-patch')
 const mongoose = require('mongoose')
 const ObjectId = require('mongodb').ObjectId;
 
@@ -32,6 +33,7 @@ async function createNewBlock(recBlock, articleId) {
       // console.log("########")
     })
     await newBlock.save()
+    return {contentId: newContent._id,revisionId: newBlock['revisions'][0]._id}
 }
 
 module.exports = {
@@ -106,11 +108,27 @@ module.exports = {
         createAt: new Date(data.createAt),
         blocks: data.blocks
       })
+      const version = new Version({
+        version: 1,
+        articleId: article._id,
+        blocks:[]
+        // blocks: [{
+        //   contentId: {
+        //   type: ObjectId,
+        //   required: true
+        // },
+        // revisionId: {
+        //   type: ObjectId,
+        //   required: true
+        // },
+        // order: {
+        //   type: Number,
+        //   required: true
+        // }}]
+      })
+      console.log(version)
       for (var block in article.blocks) {  
-        console.log({block})
         article.blocks[block]["blockRevision"] = 1
-        console.log(article.blocks[block]["blockRevision"])
-        console.log(article.blocks[block]["content"])
       }
       // article.blocks = article.blocks.map((val)=>　({...val, blockRevision:123}))
       console.log("############")
@@ -118,8 +136,11 @@ module.exports = {
       console.log("############")
       // 需要對uid進行log寫入
       for (var block in article["blocks"]) {
-        await createNewBlock(article["blocks"][block], article._id)
+        var versionId = await createNewBlock(article["blocks"][block], article._id)
+        console.log(version)
+        version['blocks'].push({contentId: versionId.contentId, revisionId: versionId.revisionId, order: 0})
       }
+      await version.save()
       await article.save().then(result => {
         console.log(result)
         res.status(200).send({
@@ -188,8 +209,6 @@ module.exports = {
                   if (await diff.compareContent(updateObj["blocks"][block]["content"], article["blocks"][block]["content"])) {
                     updateObj["blocks"][block]["blockRevision"] += 1
                     var newBlock = await Block.findOne({ blockId: updateObj["blocks"][block]["_id"] })
-                    console.log("ABBB")
-                    console.log(article["blocks"][articleBlock]["_id"])
                     var newContent = new Content({
                       blockId: article["blocks"][articleBlock]["_id"],
                       articleId: article["_id"],
