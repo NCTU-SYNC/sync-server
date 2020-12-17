@@ -5,7 +5,7 @@ const diff = {
   	var diff = jsdiff.diffJson(text1, text2)
     const diffChar = jsdiff.diffChars(text2['content'][0]['content'][0]['text'], text1['content'][0]['content'][0]['text'])
     console.log("444444")
-    //console.log(text1['content'][0]['content'][0]['text'],text2['content'][0]['content'][0]['text'])
+    // console.log(text1['content'][0]['content'][0]['text'],text2['content'][0]['content'][0]['text'])
     console.log(diffChar)
     console.log("BBBBBB")
   	if (diff.length != 1)
