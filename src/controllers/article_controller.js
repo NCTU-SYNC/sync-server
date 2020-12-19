@@ -33,7 +33,7 @@ async function createNewBlock(recBlock, articleId) {
       // console.log("########")
     })
     await newBlock.save()
-    return {contentId: newContent._id,revisionId: newBlock['revisions'][0]._id}
+    return {blockId: newContent.blockId, contentId: newContent._id,revisionId: newBlock['revisions'][0]._id}
 }
 
 module.exports = {
@@ -109,36 +109,20 @@ module.exports = {
         blocks: data.blocks
       })
       const version = new Version({
-        version: 1,
         articleId: article._id,
-        blocks:[]
-        // blocks: [{
-        //   contentId: {
-        //   type: ObjectId,
-        //   required: true
-        // },
-        // revisionId: {
-        //   type: ObjectId,
-        //   required: true
-        // },
-        // order: {
-        //   type: Number,
-        //   required: true
-        // }}]
+        version: [{
+          blocks: []
+        }]
       })
-      console.log(version)
       for (var block in article.blocks) {  
         article.blocks[block]["blockRevision"] = 1
       }
       // article.blocks = article.blocks.map((val)=>　({...val, blockRevision:123}))
-      console.log("############")
-      console.log(article)
-      console.log("############")
       // 需要對uid進行log寫入
       for (var block in article["blocks"]) {
         var versionId = await createNewBlock(article["blocks"][block], article._id)
         console.log(version)
-        version['blocks'].push({contentId: versionId.contentId, revisionId: versionId.revisionId, order: 0})
+        version['version'][0]['blocks'].push({blockId: versionId.blockId, contentId: versionId.contentId, revisionId: versionId.revisionId, order: 0})
       }
       await version.save()
       await article.save().then(result => {
@@ -197,6 +181,11 @@ module.exports = {
         if (errors === undefined) {
           // var updateObj = jsonpatch.applyPatch(article, patches).newDocument
           var updateObj = req.body
+          var thisVersion = { blocks: [{
+            // blockId: "",
+            // contentId: "",
+            // order: 0
+          }]}
           for (var block in updateObj["blocks"]) {
             if (!updateObj["blocks"][block].hasOwnProperty("blockRevision")) {
               updateObj["blocks"][block]["blockRevision"] = 1
@@ -230,6 +219,12 @@ module.exports = {
                       // console.log(result)
                       // console.log("########")
                     })
+                    var thisVersionBlock = { 
+                      blockId: newContent.blockId,
+                      contentId: newContent._id,
+                      order: 0
+                    }
+                    thisVersion.blocks.push(thisVersionBlock)
                   }
                 }
                 break
@@ -237,6 +232,11 @@ module.exports = {
             }
           
           }
+          var newVersion = await Version.findOne({articleId: article["_id"]})
+          console.log("43214")
+          newVersion.version.push(thisVersion)
+          console.log(newVersion)
+          await Version.findOneAndUpdate({ articleId: article["_id"] }, newVersion, { new: true, upsert: true })
           Article.findOneAndUpdate({ _id: id }, updateObj, { new: true, upsert: true }, (err, doc) => {
             if (err) {
               res.status(200).send({

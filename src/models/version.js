@@ -4,6 +4,10 @@ const Schema = mongoose.Schema
 ObjectId = Schema.ObjectId
 
 const blockSchema = new mongoose.Schema({
+  blockId: {
+    type: ObjectId,
+    required: true
+  },
   contentId: {
     type: ObjectId,
     required: true
@@ -14,17 +18,17 @@ const blockSchema = new mongoose.Schema({
   }
 })
 
+const blocksSchema = new mongoose.Schema({
+  blocks: [blockSchema]
+})
+
 const versionSchema = new mongoose.Schema({
-  version: {
-    type: Number,
-    required: true
-  },
   articleId: {
     type: ObjectId,
     required: true
   },
-  blocks: [blockSchema]
+  version: [blocksSchema]
 })
 
-const version = mongoose.model('Version', blockSchema, 'Versions')
+const version = mongoose.model('Version', versionSchema, 'Version')
 module.exports = version
