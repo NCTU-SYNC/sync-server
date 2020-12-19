@@ -1,15 +1,13 @@
 const mongoose = require('mongoose')
 const Schema = mongoose.Schema
 
-ObjectId = Schema.ObjectId
-
 const contentSchema = new mongoose.Schema({
   blockId: {
-    type: ObjectId,
+    type: Schema.ObjectId,
     required: true
   },
   articleId: {
-    type: ObjectId,
+    type: Schema.ObjectId,
     required: true
   },
   content: {

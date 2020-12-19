@@ -1,7 +1,6 @@
 const mongoose = require('mongoose')
 const Schema = mongoose.Schema
-
-ObjectId = Schema.ObjectId
+const ObjectId = Schema.ObjectId
 
 const blockSchema = new mongoose.Schema({
   blockId: {
@@ -30,5 +29,5 @@ const versionSchema = new mongoose.Schema({
   version: [blocksSchema]
 })
 
-const version = mongoose.model('Version', versionSchema, 'Version')
+const version = mongoose.model('Version', versionSchema, 'Versions')
 module.exports = version

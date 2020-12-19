@@ -1,7 +1,6 @@
 const mongoose = require('mongoose')
 const Schema = mongoose.Schema
-
-ObjectId = Schema.ObjectId
+const ObjectId = Schema.ObjectId
 
 const revisionSchema = new mongoose.Schema({
   updatedAt: {
@@ -14,7 +13,7 @@ const revisionSchema = new mongoose.Schema({
   },
   author: {
     type: String,
-    require: true,
+    require: true
   }
 })
 

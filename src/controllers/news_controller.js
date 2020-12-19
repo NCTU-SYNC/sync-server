@@ -4,7 +4,7 @@ module.exports = {
   getNews (req, res, next) {
     const keyword = req.query.q || ''
     const checkQueryLimit = Number(req.query.limit)
-    const limit = isNaN(checkQueryLimit)? 20 : checkQueryLimit
+    const limit = isNaN(checkQueryLimit) ? 20 : checkQueryLimit
     console.log('getNews: ' + keyword + ', ' + limit)
     News.find({
       $or: [
@@ -21,7 +21,7 @@ module.exports = {
           }
         }
       ]
-    }, null, {limit: limit, sort: {'_id': -1}})
+    }, null, { limit: limit, sort: { _id: -1 } })
       .exec((err, doc) => {
         if (err || doc.length === 0) {
           res.json({
