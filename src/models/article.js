@@ -16,6 +16,10 @@ const blockSchema = new mongoose.Schema({
   },
   content: {
     type: Object
+  },
+  blockRevision: {
+    type: Number,
+    required: true
   }
 })
 
