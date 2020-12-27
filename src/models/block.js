@@ -11,6 +11,10 @@ const revisionSchema = new mongoose.Schema({
     type: ObjectId,
     required: true
   },
+  blockTitle: {
+    type: String,
+    required: true
+  },
   author: {
     type: String,
     require: true

@@ -10,19 +10,20 @@ const diff = require('../controllers/diff_controller')
 const mongoose = require('mongoose')
 
 async function createNewBlock (recBlock, articleId) {
-  console.log('recBlock._id', recBlock._id)
+  const blockId = recBlock._id ? recBlock._id : mongoose.Types.ObjectId()
   var newBlock = new Block({
-    blockId: recBlock._id,
+    blockId,
     articleId: articleId,
     revisions: [{
       updatedAt: new Date(),
       contentId: mongoose.Types.ObjectId(),
+      blockTitle: recBlock.blockTitle,
       author: ''
     }]
   })
   var newContent = new Content({
     _id: newBlock.revisions[0].contentId,
-    blockId: recBlock._id,
+    blockId,
     articleId: articleId,
     content: recBlock.content
   })
@@ -90,12 +91,19 @@ module.exports = {
   },
   async createArticle (req, res, next) {
     console.log('createArticle')
-    console.log(req.body)
     try {
-      // const uid = await auth.verifyIdToken(req.body.token)
-      // console.log('uid: ' + uid)
       const data = req.body
+      const newArticleId = mongoose.Types.ObjectId()
+      const newArticleBlocksList = []
+      for (const block of data.blocks) {
+        const { blockId, contentId, revisionId } = await createNewBlock(block, newArticleId)
+        block._id = blockId
+        const blockAddToVersion = { blockId, contentId, revisionIndex: 0, order: 0 }
+        newArticleBlocksList.push(blockAddToVersion)
+      }
+
       const article = new Article({
+        _id: newArticleId,
         title: data.title,
         tags: data.tags,
         authors: data.authors,
@@ -103,32 +111,24 @@ module.exports = {
         createAt: new Date(data.createAt),
         blocks: data.blocks
       })
+
       const version = new Version({
         articleId: article._id,
-        version: [{
-          blocks: []
+        versions: [{
+          title: data.title,
+          updatedAt: new Date(),
+          blocks: newArticleBlocksList
         }]
       })
-      for (const block in article.blocks) {
-        article.blocks[block].blockRevision = 1
-      }
-
-      for (var block in article.blocks) {
-        var versionId = await createNewBlock(article.blocks[block], article._id)
-        console.log(version)
-        version.version[0].blocks.push({ blockId: versionId.blockId, contentId: versionId.contentId, revisionId: versionId.revisionId, order: 0 })
-      }
-
       await version.save()
       await article.save().then(result => {
-        console.log(result)
         res.status(200).send({
           code: 200,
           type: 'success',
           message: '成功發布新文章',
           id: result.id
         })
-        module.exports.storeArticleIdToFirestore(data.uid, result.id)
+        // module.exports.storeArticleIdToFirestore(data.uid, result.id)
         return Promise.resolve()
       }).catch(error => {
         res.status(200).send({
@@ -151,82 +151,95 @@ module.exports = {
     console.log('updateArticleById: ' + req.body.id)
 
     try {
-      // 使用者登入用
-      // const uid = await auth.verifyIdToken(req.body.token)
-      // console.log('uid: ' + uid)
       const { id, uid } = req.body
-      console.log(id)
-      // JsonPatch http://jsonpatch.com/
-      // 需要實作判斷更新功能
-      // const patches = req.body.blocks
-
       var article = await Article.findById(id).lean()
-      console.log(article)
-
       if (article === undefined) {
-        console.log(article)
         res.status(200).send({
           code: 500,
           type: 'error',
           message: '文章的ID輸入有誤，請重新查詢'
         })
       } else {
-        // var errors = jsonpatch.validate(patches, article)
         var errors
         if (errors === undefined) {
-          // var updateObj = jsonpatch.applyPatch(article, patches).newDocument
-          var updateObj = req.body
-          var thisVersion = {
-            blocks: [{
-            // blockId: "",
-            // contentId: "",
-            // order: 0
-            }]
-          }
+          const updateObj = req.body
+          const latestVersionBlocksList = []
+          const articleVersion = await Version.findOne({ articleId: article._id })
+
+          // Fine block id in update object
           for (const block of updateObj.blocks) {
-            if (block.blockRevision === undefined) {
-              block.blockRevision = 1
-              block._id = mongoose.Types.ObjectId()
-              await createNewBlock(block, article._id)
-            } else {
-              for (const articleBlock of article.blocks) {
-                if (block.blockId === articleBlock.blockId) {
-                  if (diff.compareContent(block.content, articleBlock.content)) {
-                    block.blockRevision += 1
-
-                    var newContent = new Content({
-                      blockId: articleBlock._id,
-                      articleId: article._id,
-                      content: articleBlock.content
-                    })
-                    await newContent.save()
-
-                    var thisRevision = {
-                      updatedAt: new Date(),
-                      contentId: newContent._id,
-                      author: ''
-                    }
-
-                    var newBlock = await Block.findOne({ blockId: block._id })
-                    newBlock.revisions.push(thisRevision)
-                    await Block.findOneAndUpdate({ blockId: block._id }, newBlock, { new: true, upsert: true })
-
-                    var thisVersionBlock = {
-                      blockId: newContent.blockId,
-                      contentId: newContent._id,
-                      order: 0
-                    }
-                    thisVersion.blocks.push(thisVersionBlock)
-                  }
-                }
-                break
+            const articleBlock = article.blocks.find((ab) => {
+              if (block._id === undefined) {
+                // There is no _id property in new block
+                return false
+              } else {
+                return ab._id.toString() === block._id.toString()
               }
+            })
+
+            if (articleBlock) {
+              console.log('articleBlock')
+              // Find block, check different
+              if (diff.compareContent(block.content, articleBlock.content)) {
+                console.log('diff.compareContent = true')
+                const newContent = new Content({
+                  blockId: block._id,
+                  articleId: article._id,
+                  content: block.content
+                })
+                await newContent.save()
+
+                const newBlock = await Block.findOne({ blockId: block._id })
+                newBlock.revisions.push({
+                  updatedAt: new Date(),
+                  contentId: newContent._id,
+                  blockTitle: block.blockTitle,
+                  author: ''
+                })
+                await newBlock.save()
+
+                latestVersionBlocksList.push({
+                  blockId: newContent.blockId,
+                  contentId: newContent._id,
+                  order: 0,
+                  revisionIndex: newBlock.revisions.length - 1
+                })
+              } else {
+                console.log('diff.compareContent = false')
+
+                const currentVersion = articleVersion.versions.length - 1
+                const targetCopiedBlock = articleVersion.versions[currentVersion].blocks.find((b) => {
+                  if (b.blockId === undefined) {
+                    return false
+                  } else {
+                    return b.blockId.toString() === block._id
+                  }
+                })
+                if (targetCopiedBlock) {
+                  console.log(`find block id: ${block._id}`)
+                  latestVersionBlocksList.push(targetCopiedBlock)
+                }
+              }
+            } else {
+              console.log('createNewBlock')
+              // { blockId: newContent.blockId, contentId: newContent._id, revisionId: newBlock.revisions[0]._id }
+              const { blockId, contentId } = await createNewBlock(block, article._id)
+              block._id = blockId
+              latestVersionBlocksList.push({
+                blockId,
+                contentId,
+                revisionIndex: 0,
+                order: 0
+              })
             }
           }
-          var newVersion = await Version.findOne({ articleId: article._id })
-          newVersion.version.push(thisVersion)
-          console.log(newVersion)
-          await Version.findOneAndUpdate({ articleId: article._id }, newVersion, { new: true, upsert: true })
+
+          articleVersion.versions.push({
+            title: req.body.title,
+            updatedAt: new Date(),
+            blocks: latestVersionBlocksList
+          })
+          await Version.findOneAndUpdate({ articleId: article._id }, articleVersion, { new: true, upsert: true })
           Article.findOneAndUpdate({ _id: id }, updateObj, { new: true, upsert: true }, (err, doc) => {
             if (err) {
               res.status(200).send({
@@ -243,7 +256,7 @@ module.exports = {
               message: '已成功更新文章'
             })
             module.exports.updateArticleEditingCount(id)
-            module.exports.storeArticleIdToFirestore(uid, id)
+            // module.exports.storeArticleIdToFirestore(uid, id)
           })
         } else {
           console.log(errors)

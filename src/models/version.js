@@ -14,11 +14,11 @@ const blockSchema = new mongoose.Schema({
   order: {
     type: Number,
     required: true
+  },
+  revisionIndex: {
+    type: Number,
+    required: true
   }
-})
-
-const blocksSchema = new mongoose.Schema({
-  blocks: [blockSchema]
 })
 
 const versionSchema = new mongoose.Schema({
@@ -26,7 +26,17 @@ const versionSchema = new mongoose.Schema({
     type: ObjectId,
     required: true
   },
-  version: [blocksSchema]
+  versions: [{
+    title: {
+      type: String,
+      required: true
+    },
+    updatedAt: {
+      type: Date,
+      required: true
+    },
+    blocks: [blockSchema]
+  }]
 })
 
 const version = mongoose.model('Version', versionSchema, 'Versions')

@@ -16,10 +16,6 @@ const blockSchema = new mongoose.Schema({
   },
   content: {
     type: Object
-  },
-  blockRevision: {
-    type: Number,
-    required: true
   }
 })
 
@@ -48,7 +44,7 @@ const articleSchema = new mongoose.Schema({
   lastUpdatedAt: {
     type: Date,
     default: Date.now
-  },  
+  },
   isPopular: {
     type: Boolean,
     default: false
