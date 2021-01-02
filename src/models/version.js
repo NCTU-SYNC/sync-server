@@ -35,7 +35,11 @@ const versionSchema = new mongoose.Schema({
       type: Date,
       required: true
     },
-    blocks: [blockSchema]
+    blocks: [blockSchema],
+    author: {
+      type: Object,
+      required: true
+    }
   }]
 })
 

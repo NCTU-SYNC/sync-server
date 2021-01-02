@@ -8,7 +8,7 @@ const blockSchema = new mongoose.Schema({
   },
   blockTitle: {
     type: String,
-    require: true
+    required: true
   },
   blockDateTime: {
     type: Date,
@@ -16,6 +16,10 @@ const blockSchema = new mongoose.Schema({
   },
   content: {
     type: Object
+  },
+  authors: {
+    type: Array,
+    required: true
   }
 })
 
