@@ -170,6 +170,7 @@ module.exports = {
       } else {
         var errors
         if (errors === undefined) {
+          let checkIfChange = false
           const updateObj = req.body
           updateObj.authors = getUpdatedAuthors(updateObj.authors, uid, name)
           const latestVersionBlocksList = []
@@ -186,10 +187,11 @@ module.exports = {
               }
             })
 
-            if (articleBlock) {
+            if (articleBlock) { // if content has been changed
               console.log('articleBlock')
               // Find block, check different
               if (diff.compareContent(block.content, articleBlock.content)) {
+                checkIfChange = true
                 console.log('diff.compareContent = true')
                 const newContent = new Content({
                   blockId: block._id,
@@ -216,6 +218,28 @@ module.exports = {
                   revisionIndex: newBlock.revisions.length - 1,
                   authors: newBlock.authors
                 })
+              } else if (block.blockTitle !== articleBlock.blockTitle) { // if only blocktitle has been changed
+                checkIfChange = true
+                console.log('only block title has been changed')
+                const newBlock = await Block.findOne({ blockId: block._id })
+                console.log(newBlock.revisions[newBlock.revisions.length - 1].contentId)
+                newBlock.revisions.push({
+                  updatedAt: new Date(),
+                  contentId: newBlock.revisions[newBlock.revisions.length - 1].contentId,
+                  blockTitle: block.blockTitle,
+                  author: { uid, name }
+                })
+                newBlock.authors = getUpdatedAuthors(newBlock.authors, uid, name)
+                updateObj.blocks[index].authors = getUpdatedAuthors(newBlock.authors, uid, name)
+                await newBlock.save()
+
+                latestVersionBlocksList.push({
+                  blockId: block.blockId,
+                  contentId: newBlock.revisions[newBlock.revisions.length - 1].contentId,
+                  order: 0,
+                  revisionIndex: newBlock.revisions.length - 1,
+                  authors: newBlock.authors
+                })
               } else {
                 console.log('diff.compareContent = false')
 
@@ -233,6 +257,7 @@ module.exports = {
                 }
               }
             } else {
+              checkIfChange = true
               console.log('createNewBlock')
               // { blockId: newContent.blockId, contentId: newContent._id, revisionId: newBlock.revisions[0]._id }
               const { blockId, contentId } = await createNewBlock(block, article._id, uid, name)
@@ -246,14 +271,19 @@ module.exports = {
               })
             }
           }
-
-          articleVersion.versions.push({
-            title: req.body.title,
-            author: { uid, name },
-            updatedAt: new Date(),
-            blocks: latestVersionBlocksList
-          })
-          await Version.findOneAndUpdate({ articleId: article._id }, articleVersion, { new: true, upsert: true })
+          if (!checkIfChange) {
+            const detectArticle = Article.findOne({ _id: id })
+            if (detectArticle.title !== updateObj.title) { checkIfChange = true }
+          }
+          if (checkIfChange) {
+            articleVersion.versions.push({
+              title: req.body.title,
+              author: { uid, name },
+              updatedAt: new Date(),
+              blocks: latestVersionBlocksList
+            })
+            await Version.findOneAndUpdate({ articleId: article._id }, articleVersion, { new: true, upsert: true })
+          }
           Article.findOneAndUpdate({ _id: id }, updateObj, { new: true, upsert: true }, (err, doc) => {
             if (err) {
               res.status(200).send({
