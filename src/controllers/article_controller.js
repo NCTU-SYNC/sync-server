@@ -9,6 +9,9 @@ const diff = require('../controllers/diff_controller')
 
 const mongoose = require('mongoose')
 
+const isExistedAuthor = (originalAuthors, uid, name) => originalAuthors.some(author => JSON.stringify(author) === JSON.stringify({ uid, name }))
+const getUpdatedAuthors = (originalAuthors, uid, name) => !isExistedAuthor(originalAuthors, uid, name) ? originalAuthors.concat({ uid, name }) : originalAuthors
+
 async function createNewBlock (recBlock, articleId, uid, name) {
   const blockId = recBlock._id ? recBlock._id : mongoose.Types.ObjectId()
   var newBlock = new Block({
@@ -101,7 +104,7 @@ module.exports = {
       for (const block of data.blocks) {
         const { blockId, contentId, revisionId } = await createNewBlock(block, newArticleId, uid, name)
         block._id = blockId
-        const blockAddToVersion = { blockId, contentId, revisionIndex: 0, order: 0, authors: [{ uid, name }] }
+        const blockAddToVersion = { blockId, contentId, revisionIndex: 0, order: 0 }
         newArticleBlocksList.push(blockAddToVersion)
       }
 
@@ -109,7 +112,7 @@ module.exports = {
         _id: newArticleId,
         title: data.title,
         tags: data.tags,
-        authors: !data.authors.some(author => JSON.stringify(author) === JSON.stringify({ uid, name })) ? data.authors.concat({ uid, name }) : data.authors,
+        authors: getUpdatedAuthors(data.authors, uid, name),
         category: [],
         createAt: new Date(data.createAt),
         blocks: data.blocks.map(block => ({ ...block, authors: [{ uid, name }] }))
@@ -157,7 +160,6 @@ module.exports = {
     try {
       const { id, token } = req.body
       const { uid, name } = await firebase.admin.auth().verifyIdToken(token)
-      // console.log('uid = ', uid)
       var article = await Article.findById(id).lean()
       if (article === undefined) {
         res.status(200).send({
@@ -169,7 +171,7 @@ module.exports = {
         var errors
         if (errors === undefined) {
           const updateObj = req.body
-          updateObj.authors = !updateObj.authors.some(author => JSON.stringify(author) === JSON.stringify({ uid, name })) ? [...updateObj.authors, { uid, name }] : updateObj.authors
+          updateObj.authors = getUpdatedAuthors(updateObj.authors, uid, name)
           const latestVersionBlocksList = []
           const articleVersion = await Version.findOne({ articleId: article._id })
 
@@ -203,8 +205,8 @@ module.exports = {
                   blockTitle: block.blockTitle,
                   author: { uid, name }
                 })
-                newBlock.authors = !newBlock.authors.some(author => JSON.stringify(author) === JSON.stringify({ uid, name })) ? [...newBlock.authors, { uid, name }] : newBlock.authors
-                updateObj.blocks[index].authors = !newBlock.authors.some(author => JSON.stringify(author) === JSON.stringify({ uid, name })) ? [...newBlock.authors, { uid, name }] : newBlock.authors
+                newBlock.authors = getUpdatedAuthors(newBlock.authors, uid, name)
+                updateObj.blocks[index].authors = getUpdatedAuthors(newBlock.authors, uid, name)
                 await newBlock.save()
 
                 latestVersionBlocksList.push({
@@ -245,15 +247,13 @@ module.exports = {
             }
           }
 
-          const _version = {
+          articleVersion.versions.push({
             title: req.body.title,
             author: { uid, name },
             updatedAt: new Date(),
             blocks: latestVersionBlocksList
-          }
-          articleVersion.versions.push(_version)
+          })
           await Version.findOneAndUpdate({ articleId: article._id }, articleVersion, { new: true, upsert: true })
-          // TODO: update Article 底下的 authors 和 blocks 裡面的 authors
           Article.findOneAndUpdate({ _id: id }, updateObj, { new: true, upsert: true }, (err, doc) => {
             if (err) {
               res.status(200).send({

@@ -18,10 +18,6 @@ const blockSchema = new mongoose.Schema({
   revisionIndex: {
     type: Number,
     required: true
-  },
-  authors: {
-    type: Array,
-    required: true
   }
 })
 
