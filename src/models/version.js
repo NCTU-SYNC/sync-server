@@ -18,6 +18,10 @@ const blockSchema = new mongoose.Schema({
   revisionIndex: {
     type: Number,
     required: true
+  },
+  authors: {
+    type: Array,
+    required: true
   }
 })
 
@@ -35,7 +39,11 @@ const versionSchema = new mongoose.Schema({
       type: Date,
       required: true
     },
-    blocks: [blockSchema]
+    blocks: [blockSchema],
+    author: {
+      type: Object,
+      required: true
+    }
   }]
 })
 

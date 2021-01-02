@@ -9,7 +9,7 @@ const diff = require('../controllers/diff_controller')
 
 const mongoose = require('mongoose')
 
-async function createNewBlock (recBlock, articleId) {
+async function createNewBlock (recBlock, articleId, uid, name) {
   const blockId = recBlock._id ? recBlock._id : mongoose.Types.ObjectId()
   var newBlock = new Block({
     blockId,
@@ -18,8 +18,9 @@ async function createNewBlock (recBlock, articleId) {
       updatedAt: new Date(),
       contentId: mongoose.Types.ObjectId(),
       blockTitle: recBlock.blockTitle,
-      author: ''
-    }]
+      author: { uid, name }
+    }],
+    authors: [{ uid, name }]
   })
   var newContent = new Content({
     _id: newBlock.revisions[0].contentId,
@@ -93,12 +94,14 @@ module.exports = {
     console.log('createArticle')
     try {
       const data = req.body
+      const { token } = data
+      const { uid, name } = await firebase.admin.auth().verifyIdToken(token)
       const newArticleId = mongoose.Types.ObjectId()
       const newArticleBlocksList = []
       for (const block of data.blocks) {
-        const { blockId, contentId, revisionId } = await createNewBlock(block, newArticleId)
+        const { blockId, contentId, revisionId } = await createNewBlock(block, newArticleId, uid, name)
         block._id = blockId
-        const blockAddToVersion = { blockId, contentId, revisionIndex: 0, order: 0 }
+        const blockAddToVersion = { blockId, contentId, revisionIndex: 0, order: 0, authors: [{ uid, name }] }
         newArticleBlocksList.push(blockAddToVersion)
       }
 
@@ -106,10 +109,10 @@ module.exports = {
         _id: newArticleId,
         title: data.title,
         tags: data.tags,
-        authors: data.authors,
+        authors: !data.authors.some(author => JSON.stringify(author) === JSON.stringify({ uid, name })) ? data.authors.concat({ uid, name }) : data.authors,
         category: [],
         createAt: new Date(data.createAt),
-        blocks: data.blocks
+        blocks: data.blocks.map(block => ({ ...block, authors: [{ uid, name }] }))
       })
 
       const version = new Version({
@@ -117,7 +120,8 @@ module.exports = {
         versions: [{
           title: data.title,
           updatedAt: new Date(),
-          blocks: newArticleBlocksList
+          blocks: newArticleBlocksList,
+          author: { uid, name }
         }]
       })
       await version.save()
@@ -151,7 +155,9 @@ module.exports = {
     console.log('updateArticleById: ' + req.body.id)
 
     try {
-      const { id, uid } = req.body
+      const { id, token } = req.body
+      const { uid, name } = await firebase.admin.auth().verifyIdToken(token)
+      // console.log('uid = ', uid)
       var article = await Article.findById(id).lean()
       if (article === undefined) {
         res.status(200).send({
@@ -163,11 +169,12 @@ module.exports = {
         var errors
         if (errors === undefined) {
           const updateObj = req.body
+          updateObj.authors = !updateObj.authors.some(author => JSON.stringify(author) === JSON.stringify({ uid, name })) ? [...updateObj.authors, { uid, name }] : updateObj.authors
           const latestVersionBlocksList = []
           const articleVersion = await Version.findOne({ articleId: article._id })
 
-          // Fine block id in update object
-          for (const block of updateObj.blocks) {
+          // Find block id in update object
+          for (const [index, block] of updateObj.blocks.entries()) {
             const articleBlock = article.blocks.find((ab) => {
               if (block._id === undefined) {
                 // There is no _id property in new block
@@ -194,15 +201,18 @@ module.exports = {
                   updatedAt: new Date(),
                   contentId: newContent._id,
                   blockTitle: block.blockTitle,
-                  author: ''
+                  author: { uid, name }
                 })
+                newBlock.authors = !newBlock.authors.some(author => JSON.stringify(author) === JSON.stringify({ uid, name })) ? [...newBlock.authors, { uid, name }] : newBlock.authors
+                updateObj.blocks[index].authors = !newBlock.authors.some(author => JSON.stringify(author) === JSON.stringify({ uid, name })) ? [...newBlock.authors, { uid, name }] : newBlock.authors
                 await newBlock.save()
 
                 latestVersionBlocksList.push({
                   blockId: newContent.blockId,
                   contentId: newContent._id,
                   order: 0,
-                  revisionIndex: newBlock.revisions.length - 1
+                  revisionIndex: newBlock.revisions.length - 1,
+                  authors: newBlock.authors
                 })
               } else {
                 console.log('diff.compareContent = false')
@@ -223,23 +233,27 @@ module.exports = {
             } else {
               console.log('createNewBlock')
               // { blockId: newContent.blockId, contentId: newContent._id, revisionId: newBlock.revisions[0]._id }
-              const { blockId, contentId } = await createNewBlock(block, article._id)
+              const { blockId, contentId } = await createNewBlock(block, article._id, uid, name)
               block._id = blockId
               latestVersionBlocksList.push({
                 blockId,
                 contentId,
                 revisionIndex: 0,
-                order: 0
+                order: 0,
+                authors: [{ uid, name }]
               })
             }
           }
 
-          articleVersion.versions.push({
+          const _version = {
             title: req.body.title,
+            author: { uid, name },
             updatedAt: new Date(),
             blocks: latestVersionBlocksList
-          })
+          }
+          articleVersion.versions.push(_version)
           await Version.findOneAndUpdate({ articleId: article._id }, articleVersion, { new: true, upsert: true })
+          // TODO: update Article 底下的 authors 和 blocks 裡面的 authors
           Article.findOneAndUpdate({ _id: id }, updateObj, { new: true, upsert: true }, (err, doc) => {
             if (err) {
               res.status(200).send({

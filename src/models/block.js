@@ -16,7 +16,7 @@ const revisionSchema = new mongoose.Schema({
     required: true
   },
   author: {
-    type: String,
+    type: Object,
     require: true
   }
 })
@@ -28,6 +28,10 @@ const blockSchema = new mongoose.Schema({
   },
   articleId: {
     type: ObjectId,
+    required: true
+  },
+  authors: {
+    type: Array,
     required: true
   },
   revisions: [revisionSchema]
