@@ -1,24 +1,21 @@
-const Article = require('../models/article')
 const Block = require('../models/block')
 const Version = require('../models/version')
 const Content = require('../models/content')
 const { toInteger } = require('../utils/number')
-const findVersionArticleById = (articleId) => {
-  return Article.findById(articleId).exec()
-}
 
 module.exports = {
   async getArticleVersionById (req, res, next) {
     console.log(`getArticleVersionById: ${req.params.id}, versionIndex: ${req.query.versionIndex}`)
     // const articleId = req.params.id
     const versionInstance = await Version.findOne({ articleId: req.params.id })
-    const versionIndexStr = req.query.revisionIndex
+    const versionIndexStr = req.query.versionIndex
     const versionsCount = versionInstance.versions.length
     let versionIndex = toInteger(versionIndexStr, versionsCount) - 1
-
-    if (versionIndex >= versionsCount || versionIndex <= 0) {
+    console.log(versionIndex, versionsCount)
+    if (versionIndex >= versionsCount || versionIndex < 0) {
       versionIndex = versionsCount - 1
     }
+    console.log(versionIndex)
     const currentViewVersion = versionInstance.versions[versionIndex]
     const currentContent = []
     for (const block of currentViewVersion.blocks) {
@@ -30,9 +27,17 @@ module.exports = {
         currentContent.push({ content, blockId, blockInfo })
       }
     }
+
+    let from, to
+    if (versionIndex % 10 === 0) {
+      from = versionIndex / 10
+      to = (versionIndex / 10) + 10
+    } else {
+      from = Math.floor((versionIndex + 1) / 10) * 10
+      to = Math.ceil((versionIndex + 1) / 10) * 10
+    }
     const versionsData = versionInstance.versions.reverse().slice(
-      Math.floor(versionIndex / 10) * 10,
-      Math.ceil(versionIndex / 10) * 10
+      from, to
     )
 
     const doc = {
@@ -40,7 +45,10 @@ module.exports = {
         title: currentViewVersion.title,
         blocks: currentContent
       },
-      versions: versionsData
+      versions: versionsData,
+      from,
+      to,
+      length: versionsCount
     }
     res.status(200).send({
       code: 200,
@@ -64,7 +72,7 @@ module.exports = {
     const revisionsCount = revisionInstance.revisions.length
     let revisionIndex = toInteger(revisionIndexStr, revisionsCount) - 1
 
-    if (revisionIndex >= revisionsCount || revisionIndex <= 0) {
+    if (revisionIndex >= revisionsCount || revisionIndex < 0) {
       revisionIndex = revisionsCount - 1
     }
     // const currentViewRevision = revisionInstance.revisions[revisionIndex]
@@ -84,22 +92,25 @@ module.exports = {
       }
     }
 
-    let revisionsData
+    let from, to
     if (revisionIndex % 10 === 0) {
-      revisionsData = revisionInstance.revisions.reverse().slice(
-        revisionIndex / 10,
-        (revisionIndex / 10) + 10
-      )
+      from = revisionIndex / 10
+      to = (revisionIndex / 10) + 10
     } else {
-      revisionsData = revisionInstance.revisions.reverse().slice(
-        Math.floor(revisionIndex / 10) * 10,
-        Math.ceil(revisionIndex / 10) * 10
-      )
+      from = Math.floor((revisionIndex + 1) / 10) * 10
+      to = Math.ceil((revisionIndex + 1) / 10) * 10
     }
+
+    const revisionsData = revisionInstance.revisions.reverse().slice(
+      from, to
+    )
 
     const doc = {
       currentRevision: targetSearchRevisionsList,
-      revisions: revisionsData
+      revisions: revisionsData,
+      from,
+      to,
+      length: revisionsCount
     }
     res.status(200).send({
       code: 200,

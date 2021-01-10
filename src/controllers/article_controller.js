@@ -102,7 +102,7 @@ module.exports = {
       const newArticleId = mongoose.Types.ObjectId()
       const newArticleBlocksList = []
       for (const block of data.blocks) {
-        const { blockId, contentId, revisionId } = await createNewBlock(block, newArticleId, uid, name)
+        const { blockId, contentId } = await createNewBlock(block, newArticleId, uid, name)
         block._id = blockId
         const blockAddToVersion = { blockId, contentId, revisionIndex: 0, order: 0 }
         newArticleBlocksList.push(blockAddToVersion)
