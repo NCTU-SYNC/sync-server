@@ -39,6 +39,10 @@ const versionSchema = new mongoose.Schema({
     author: {
       type: Object,
       required: true
+    },
+    versionIndex: {
+      type: Number,
+      required: true
     }
   }]
 })

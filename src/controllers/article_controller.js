@@ -124,7 +124,8 @@ module.exports = {
           title: data.title,
           updatedAt: new Date(),
           blocks: newArticleBlocksList,
-          author: { uid, name }
+          author: { uid, name },
+          versionIndex: 1
         }]
       })
       await version.save()
@@ -276,11 +277,13 @@ module.exports = {
             if (detectArticle.title !== updateObj.title) { checkIfChange = true }
           }
           if (checkIfChange) {
+            const currentVersion = articleVersion.versions.length + 1
             articleVersion.versions.push({
               title: req.body.title,
               author: { uid, name },
               updatedAt: new Date(),
-              blocks: latestVersionBlocksList
+              blocks: latestVersionBlocksList,
+              versionIndex: currentVersion
             })
             await Version.findOneAndUpdate({ articleId: article._id }, articleVersion, { new: true, upsert: true })
           }
