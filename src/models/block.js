@@ -18,6 +18,10 @@ const revisionSchema = new mongoose.Schema({
   author: {
     type: Object,
     require: true
+  },
+  revisionIndex: {
+    type: Number,
+    required: true
   }
 })
 

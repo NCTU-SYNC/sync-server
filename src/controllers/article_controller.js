@@ -21,7 +21,8 @@ async function createNewBlock (recBlock, articleId, uid, name) {
       updatedAt: new Date(),
       contentId: mongoose.Types.ObjectId(),
       blockTitle: recBlock.blockTitle,
-      author: { uid, name }
+      author: { uid, name },
+      revisionIndex: 1
     }],
     authors: [{ uid, name }]
   })
@@ -206,7 +207,8 @@ module.exports = {
                   updatedAt: new Date(),
                   contentId: newContent._id,
                   blockTitle: block.blockTitle,
-                  author: { uid, name }
+                  author: { uid, name },
+                  revisionIndex: newBlock.revisions.length + 1
                 })
                 newBlock.authors = getUpdatedAuthors(newBlock.authors, uid, name)
                 updateObj.blocks[index].authors = getUpdatedAuthors(newBlock.authors, uid, name)
@@ -228,7 +230,8 @@ module.exports = {
                   updatedAt: new Date(),
                   contentId: newBlock.revisions[newBlock.revisions.length - 1].contentId,
                   blockTitle: block.blockTitle,
-                  author: { uid, name }
+                  author: { uid, name },
+                  revisionIndex: newBlock.revisions.length + 1
                 })
                 newBlock.authors = getUpdatedAuthors(newBlock.authors, uid, name)
                 updateObj.blocks[index].authors = getUpdatedAuthors(newBlock.authors, uid, name)
