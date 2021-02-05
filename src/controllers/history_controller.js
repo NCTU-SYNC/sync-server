@@ -56,6 +56,58 @@ module.exports = {
       data: doc
     })
   },
+  async getArticleVersionsById (req, res, next) {
+    console.log(`getArticleVersionsById: ${req.params.id}, limit: ${req.query.limit}, page: ${req.query.page}`)
+    // const articleId = req.params.id
+    const versionInstance = await Version.findOne({ articleId: req.params.id })
+
+    const versionsCount = versionInstance.versions.length
+    const versionIndex = versionsCount - 1
+    const limit = toInteger(req.query.limit, 3)
+    let page = toInteger(req.query.page, 1)
+    const currentViewVersion = versionInstance.versions[versionIndex]
+    const currentContent = []
+    for (const block of currentViewVersion.blocks) {
+      // get content which under contentInstance
+      const { content, blockId } = await Content.findOne({ _id: block.contentId })
+      const currentBlock = await Block.findOne({ blockId })
+      const blockInfo = currentBlock.revisions[block.revisionIndex]
+      if (content) {
+        currentContent.push({ content, blockId, blockInfo })
+      }
+    }
+
+    if (page < 1) {
+      page = 1
+    }
+    if (page > Math.ceil(versionsCount / limit)) {
+      page = Math.ceil(versionsCount / limit)
+    }
+
+    const from = limit * (page - 1)
+    const to = limit * page
+    const versionsData = versionInstance.versions.reverse().slice(
+      from, to
+    )
+    console.log(from, to)
+    const doc = {
+      currentVersion: {
+        title: currentViewVersion.title,
+        blocks: currentContent
+      },
+      versions: versionsData,
+      from,
+      to,
+      page,
+      limit,
+      length: versionsCount
+    }
+    res.status(200).send({
+      code: 200,
+      type: 'success',
+      data: doc
+    })
+  },
   async getBlockRevisionById (req, res, next) {
     console.log('getBlockRevisionById')
     console.log('getBlockRevisionById')
