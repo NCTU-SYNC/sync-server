@@ -108,6 +108,63 @@ module.exports = {
       data: doc
     })
   },
+  async getArticlesComparisonByVersionIndexes (req, res, next) {
+    console.log(`getArticlesComparisonByVersionIndexes: ${req.params.id}, base: ${req.query.base}, compare: ${req.query.compare}`)
+    // const articleId = req.params.id
+    const versionInstance = await Version.findOne({ articleId: req.params.id })
+    console.log(req.query.base, req.query.compare)
+
+    const versionsCount = versionInstance.versions.length
+    let baseIndex = toInteger(req.query.base, versionsCount - 1) - 1
+    let compareIndex = toInteger(req.query.compare, versionsCount) - 1
+    const articles = []
+    console.log(baseIndex, compareIndex)
+    if (baseIndex < 0) baseIndex = 0
+    if (compareIndex < 0) compareIndex = 0
+    if (baseIndex === compareIndex) {
+      compareIndex = baseIndex + 1
+    }
+    if (baseIndex > versionsCount - 1 || compareIndex > versionsCount - 1) {
+      baseIndex = versionsCount - 2
+      compareIndex = versionsCount - 1
+    }
+    console.log(baseIndex, compareIndex)
+    for (const versionIndex of [baseIndex, compareIndex]) {
+      const tempContent = []
+      const tempViewVersion = versionInstance.versions[versionIndex]
+      for (const block of tempViewVersion.blocks) {
+        // get content which under contentInstance
+        const { content, blockId } = await Content.findOne({ _id: block.contentId })
+        const currentBlock = await Block.findOne({ blockId })
+        const blockInfo = currentBlock.revisions[block.revisionIndex]
+        if (content) {
+          tempContent.push({ content, blockId, blockInfo })
+        }
+      }
+      articles.push({
+        title: tempViewVersion.title,
+        author: tempViewVersion.author,
+        updateAt: tempViewVersion.updateAt,
+        versionIndex: tempViewVersion.versionIndex,
+        blocks: tempContent
+      })
+    }
+
+    const title = versionInstance.versions[versionsCount - 1].title
+
+    const doc = {
+      articles,
+      length: versionsCount,
+      base: baseIndex + 1,
+      compare: compareIndex + 1,
+      title
+    }
+    res.status(200).send({
+      code: 200,
+      type: 'success',
+      data: doc
+    })
+  },
   async getBlockRevisionById (req, res, next) {
     console.log('getBlockRevisionById')
     console.log('getBlockRevisionById')
