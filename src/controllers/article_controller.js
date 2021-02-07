@@ -4,6 +4,7 @@ var Article = require('../models/article')
 var Block = require('../models/block')
 var Content = require('../models/content')
 var Version = require('../models/version')
+var LatestNews = require('../models/latestNews')
 const auth = require('../controllers/auth_controller')
 const diff = require('../controllers/diff_controller')
 
@@ -36,7 +37,13 @@ async function createNewBlock (recBlock, articleId, uid, name) {
   await newBlock.save()
   return { blockId: newContent.blockId, contentId: newContent._id, revisionId: newBlock.revisions[0]._id }
 }
-
+function cleanLatestNews () {
+  const latestNewsCount = LatestNews.find({})
+  console.log('testtest')
+  console.log(latestNewsCount)
+  console.log('testtest')
+  LatestNews.findOneAndRemove()
+}
 module.exports = {
   getArticles (req, res, next) {
     const keyword = req.query.q || ''
@@ -129,6 +136,13 @@ module.exports = {
           versionIndex: 1
         }]
       })
+      const latestNews = new LatestNews({
+        articleId: newArticleId,
+        updatedAt: new Date()
+      })
+      // 更新最新新聞
+      // await latestNews.save()
+      // cleanLatestNews()
       await version.save()
       await article.save().then(result => {
         res.status(200).send({
