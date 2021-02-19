@@ -37,12 +37,18 @@ async function createNewBlock (recBlock, articleId, uid, name) {
   await newBlock.save()
   return { blockId: newContent.blockId, contentId: newContent._id, revisionId: newBlock.revisions[0]._id }
 }
-function cleanLatestNews () {
-  const latestNewsCount = LatestNews.find({})
-  console.log('testtest')
-  console.log(latestNewsCount)
-  console.log('testtest')
-  LatestNews.findOneAndRemove()
+async function cleanLatestNews () {
+  const latestNewsCount = await LatestNews.find({})
+  for (const newArticle of latestNewsCount) {
+    if (latestNewsCount.length > 10) {
+      console.log(newArticle._id)
+      LatestNews.findByIdAndRemove(newArticle._id, function (err, docs) {
+        if (err) console.log(err)
+      })
+      latestNewsCount.pop()
+    }
+  }
+  // LatestNews.findOneAndRemove()
 }
 module.exports = {
   getArticles (req, res, next) {
@@ -141,8 +147,8 @@ module.exports = {
         updatedAt: new Date()
       })
       // 更新最新新聞
-      // await latestNews.save()
-      // cleanLatestNews()
+      await latestNews.save()
+      await cleanLatestNews()
       await version.save()
       await article.save().then(result => {
         res.status(200).send({
