@@ -309,6 +309,13 @@ module.exports = {
               versionIndex: currentVersion
             })
             await Version.findOneAndUpdate({ articleId: article._id }, articleVersion, { new: true, upsert: true })
+            const latestNews = new LatestNews({
+              articleId: article._id,
+              updatedAt: new Date()
+            })
+            // 更新最新新聞
+            await latestNews.save()
+            await cleanLatestNews()
           }
           Article.findOneAndUpdate({ _id: id }, updateObj, { new: true, upsert: true }, (err, doc) => {
             if (err) {
