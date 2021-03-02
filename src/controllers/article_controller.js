@@ -88,8 +88,16 @@ module.exports = {
   },
   getArticleById (req, res, next) {
     console.log('getArticleById: ' + req.params.id)
-    Article
-      .findById(req.params.id)
+    if (!req.params.id) {
+      res.status(500).send({
+        code: 500,
+        type: 'error',
+        message: '文章的ID輸入有誤，請重新查詢'
+      })
+      return
+    }
+
+    Article.findByIdAndUpdate(req.params.id, { $inc: { viewsCount: 1 } }, { new: true, upsert: true })
       .exec(
         async (err, doc) => {
           if (err) {

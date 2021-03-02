@@ -61,6 +61,10 @@ const articleSchema = new mongoose.Schema({
     type: Number,
     default: 1
   },
+  viewsCount: {
+    type: Number,
+    default: 0
+  },
   blocks: [blockSchema]
 })
 
