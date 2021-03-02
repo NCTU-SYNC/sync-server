@@ -39,14 +39,19 @@ async function createNewBlock (recBlock, articleId, uid, name) {
 }
 async function cleanLatestNews () {
   const latestNewsCount = await LatestNews.find({})
-  for (const newArticle of latestNewsCount) {
-    if (latestNewsCount.length > 10) {
-      console.log(newArticle._id)
-      LatestNews.findByIdAndRemove(newArticle._id, function (err, docs) {
+  var collectionLength = latestNewsCount.length
+  while (collectionLength > 10) {
+    const latestOneNews = await LatestNews.find({ articleId: latestNewsCount[collectionLength - 1].articleId })
+    if (latestOneNews.length > 1) {
+      LatestNews.findByIdAndRemove(latestOneNews[0]._id, function (err, docs) {
         if (err) console.log(err)
       })
-      latestNewsCount.pop()
+    } else {
+      LatestNews.findByIdAndRemove(latestNewsCount[0]._id, function (err, docs) {
+        if (err) console.log(err)
+      })
     }
+    collectionLength -= 1
   }
   // LatestNews.findOneAndRemove()
 }
@@ -402,5 +407,22 @@ module.exports = {
     })
       .then(res => console.log(res))
       .catch(err => console.log(err))
+  },
+  async getPopularArticle (req, res, next) {
+    const latestNewsCount = await LatestNews.find({}).sort({ _id: -1 })
+    const doc = []
+    var i = 0
+    for (const latestNews of latestNewsCount) {
+      if (i <= 6) {
+        const { category, title, viewCount } = Article.findById(latestNews.articleId)
+        doc.push({ category, title, viewCount })
+      }
+      i += 1
+    }
+    res.status(200).send({
+      code: 200,
+      type: 'success',
+      data: doc
+    })
   }
 }
