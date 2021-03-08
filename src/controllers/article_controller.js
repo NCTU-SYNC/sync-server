@@ -89,9 +89,9 @@ module.exports = {
             var i = 0
             for (const latestNews of latestNewsCount) {
               if (i <= 6) {
-                const { category, title, viewsCount } = await Article.findById(latestNews.articleId)
+                const { category, title, viewsCount, _id } = await Article.findById(latestNews.articleId)
                 // console.log(await Article.findById(latestNews.articleId))
-                doc2.push({ category, title, viewsCount })
+                doc2.push({ category, title, viewsCount, _id })
               }
               i += 1
             }
