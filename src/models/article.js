@@ -61,7 +61,7 @@ const articleSchema = new mongoose.Schema({
     type: Number,
     default: 1
   },
-  viewCount: {
+  viewsCount: {
     type: Number,
     default: 1
   },

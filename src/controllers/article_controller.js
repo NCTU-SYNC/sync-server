@@ -75,7 +75,7 @@ module.exports = {
         }]
       }, null, { limit: limit, sort: { _id: -1 } })
       .exec(
-        (err, doc) => {
+        async (err, doc) => {
           if (err || doc.length === 0) {
             res.status(200).send({
               code: 404,
@@ -83,10 +83,22 @@ module.exports = {
               message: '查無搜尋結果'
             })
           } else {
+            const latestNewsCount = await LatestNews.find({}).sort({ _id: -1 })
+            console.log(latestNewsCount)
+            const doc2 = []
+            var i = 0
+            for (const latestNews of latestNewsCount) {
+              if (i <= 6) {
+                const { category, title, viewsCount } = await Article.findById(latestNews.articleId)
+                // console.log(await Article.findById(latestNews.articleId))
+                doc2.push({ category, title, viewsCount })
+              }
+              i += 1
+            }
             res.json({
               code: 200,
               type: 'success',
-              data: doc
+              data: [doc, doc2]
             })
           }
         })
@@ -414,8 +426,8 @@ module.exports = {
     var i = 0
     for (const latestNews of latestNewsCount) {
       if (i <= 6) {
-        const { category, title, viewCount } = Article.findById(latestNews.articleId)
-        doc.push({ category, title, viewCount })
+        const { category, title, viewsCount } = Article.findById(latestNews.articleId)
+        doc.push({ category, title, viewsCount })
       }
       i += 1
     }
