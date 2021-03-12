@@ -89,9 +89,13 @@ module.exports = {
             var i = 0
             for (const latestNews of latestNewsCount) {
               if (i <= 6) {
-                const { category, title, viewsCount, _id } = await Article.findById(latestNews.articleId)
-                // console.log(await Article.findById(latestNews.articleId))
-                doc2.push({ category, title, viewsCount, _id })
+                try {
+                  const { category, title, viewsCount, _id } = await Article.findById(latestNews.articleId)
+                  // console.log(await Article.findById(latestNews.articleId))
+                  doc2.push({ category, title, viewsCount, _id })
+                } catch (error) {
+                  console.log(error)
+                }
               }
               i += 1
             }
@@ -152,7 +156,7 @@ module.exports = {
         title: data.title,
         tags: data.tags,
         authors: getUpdatedAuthors(data.authors, uid, name),
-        category: [],
+        category: data.category,
         createAt: new Date(data.createAt),
         blocks: data.blocks.map(block => ({ ...block, authors: [{ uid, name }] }))
       })
@@ -219,7 +223,7 @@ module.exports = {
         if (errors === undefined) {
           let checkIfChange = false
           const updateObj = req.body
-          updateObj.authors = getUpdatedAuthors(updateObj.authors, uid, name)
+          if (!updateObj.isAnonymous) { updateObj.authors = getUpdatedAuthors(updateObj.authors, uid, name) }
           const latestVersionBlocksList = []
           const articleVersion = await Version.findOne({ articleId: article._id })
 

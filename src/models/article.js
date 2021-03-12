@@ -1,5 +1,4 @@
 const mongoose = require('mongoose')
-const Schema = mongoose.Schema
 
 const blockSchema = new mongoose.Schema({
   id: {
@@ -38,8 +37,8 @@ const articleSchema = new mongoose.Schema({
     default: []
   },
   category: {
-    type: Array,
-    default: []
+    type: String,
+    default: ''
   },
   createdAt: {
     type: Date,
