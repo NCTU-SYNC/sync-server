@@ -1,6 +1,8 @@
 const News = require('../models/news')
 const moment = require('moment')
 
+const mediaSources = ['中時', '中央社', '華視', '東森', 'ettoday', '台灣事實查核中心', '自由時報', '風傳媒', '聯合']
+
 module.exports = {
   getNews (req, res, next) {
     const keyword = req.query.q || ''
@@ -8,6 +10,12 @@ module.exports = {
     const limit = isNaN(checkQueryLimit) ? 20 : checkQueryLimit
     const pageNumber = isNaN(Number(req.query.page)) ? 0 : Number(req.query.page)
     const time = req.query.tbs
+    const media = req.query.media.toString() || ''
+    let searchQuery = {}
+    if (media) {
+      const searchMediaIndex = mediaSources.indexOf(media)
+      searchQuery = searchMediaIndex >= 0 ? { media } : {}
+    }
     let timeQuery = {}
     switch (time) {
       case 'qdr:h':
@@ -33,27 +41,11 @@ module.exports = {
       default: timeQuery = {}
         break
     }
-    console.log('getNews: ' + keyword + ', ' + limit + ', ' + pageNumber)
-    console.log({
-      $or: [
-        {
-          title: {
-            $regex: keyword,
-            $options: 'i'
-          }
-        },
-        {
-          content: {
-            $regex: keyword,
-            $options: 'i'
-          }
-        }
-      ],
-      ...timeQuery
-    })
+
     if (keyword) {
       News.find(
         {
+          ...searchQuery,
           $or: [
             {
               title: {
@@ -69,17 +61,19 @@ module.exports = {
             }
           ],
           ...timeQuery
-        }, null, { limit: limit, skip: pageNumber > 0 ? ((pageNumber - 1) * 20) : 0, sort: { _id: -1 } })
+        }, null, { limit: limit, skip: pageNumber > 0 ? pageNumber * 20 : 0, sort: { _id: -1 } })
         .exec((err, doc) => {
           if (err || doc.length === 0) {
             console.error(err)
-            res.json({
+            res.status(200).send({
               code: 404,
+              type: 'error',
               message: '查無搜尋結果'
             })
           } else {
             res.json({
               code: 200,
+              type: 'success',
               data: doc
             })
           }
