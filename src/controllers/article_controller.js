@@ -38,25 +38,29 @@ async function createNewBlock (recBlock, articleId, uid, name) {
   return { blockId: newContent.blockId, contentId: newContent._id, revisionId: newBlock.revisions[0]._id }
 }
 async function cleanLatestNews () {
-  const latestNewsCount = await LatestNews.find({})
-  var collectionLength = latestNewsCount.length
-  while (collectionLength > 10) {
-    const latestOneNews = await LatestNews.find({ articleId: latestNewsCount[collectionLength - 1].articleId })
-    if (latestOneNews.length > 1) {
-      LatestNews.findByIdAndRemove(latestOneNews[0]._id, function (err, docs) {
-        if (err) console.log(err)
-      })
-    } else {
-      LatestNews.findByIdAndRemove(latestNewsCount[0]._id, function (err, docs) {
-        if (err) console.log(err)
-      })
+  var latestNewsCount = await LatestNews.find({})
+  for (var news in latestNewsCount) {
+    var tempLatestNews = latestNewsCount
+    tempLatestNews = tempLatestNews.slice(Number(news) + 1)
+    for (var competeNews of tempLatestNews) {
+      if (String(competeNews.articleId) === String(latestNewsCount[news].articleId)) {
+        // LatestNews.findByIdAndDelete(mongoose.Types.ObjectId(competeNews._id))
+        await LatestNews.findByIdAndDelete(competeNews._id)
+      }
     }
-    collectionLength -= 1
   }
-  // LatestNews.findOneAndRemove()
+  while (1) {
+    latestNewsCount = await LatestNews.find({})
+    if (latestNewsCount.length > 10) {
+      await LatestNews.findByIdAndDelete(latestNewsCount[0]._id)
+    } else {
+      break
+    }
+  }
 }
 module.exports = {
   getArticles (req, res, next) {
+    cleanLatestNews()
     const keyword = req.query.q || ''
     const limit = Number(req.query.limit)
     console.log('getArticles: ' + keyword + ',' + limit)
