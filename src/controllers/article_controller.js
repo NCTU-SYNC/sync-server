@@ -10,10 +10,32 @@ const diff = require('../controllers/diff_controller')
 
 const mongoose = require('mongoose')
 
-const isExistedAuthor = (originalAuthors, uid, name) => originalAuthors.some(author => JSON.stringify(author) === JSON.stringify({ uid, name }))
-const getUpdatedAuthors = (originalAuthors, uid, name) => !isExistedAuthor(originalAuthors, uid, name) ? originalAuthors.concat({ uid, name }) : originalAuthors
+const isExistedAuthor = (originalAuthors, targetAuthor) => {
+  return originalAuthors.some(author => JSON.stringify(author) === JSON.stringify(targetAuthor))
+  /* for (const author of originalAuthors) {
+    console.log(author, targetAuthor)
+    console.log(author.uid, targetAuthor.uid, author.uid === targetAuthor.uid)
+    console.log(author.name, targetAuthor.name, author.name === targetAuthor.name)
+    console.log(author.isAnonymous, targetAuthor.isAnonymous, author.isAnonymous === targetAuthor.isAnonymous)
+    return author.uid === targetAuthor.uid && author.name === targetAuthor.name && author.isAnonymous === targetAuthor.isAnonymouss
+  } */
+}
 
-async function createNewBlock (recBlock, articleId, uid, name) {
+const getUpdatedAuthors = (originalAuthors, targetAuthor) => {
+  for (const author of originalAuthors) {
+    if (author.isAnonymous === undefined) { author.isAnonymous = false }
+  }
+  if (isExistedAuthor(originalAuthors, targetAuthor)) {
+    return originalAuthors
+  } else {
+    if (targetAuthor.isAnonymous) {
+      return originalAuthors.concat({ uid: targetAuthor.uid, name: '匿名', isAnonymous: true })
+    }
+    return originalAuthors.concat(targetAuthor)
+  }
+}
+
+async function createNewBlock (recBlock, articleId, author) {
   const blockId = recBlock._id ? recBlock._id : mongoose.Types.ObjectId()
   var newBlock = new Block({
     blockId,
@@ -22,10 +44,10 @@ async function createNewBlock (recBlock, articleId, uid, name) {
       updatedAt: new Date(),
       contentId: mongoose.Types.ObjectId(),
       blockTitle: recBlock.blockTitle,
-      author: { uid, name },
+      author,
       revisionIndex: 1
     }],
-    authors: [{ uid, name }]
+    authors: [author]
   })
   var newContent = new Content({
     _id: newBlock.revisions[0].contentId,
@@ -144,12 +166,13 @@ module.exports = {
     console.log('createArticle')
     try {
       const data = req.body
-      const { token } = data
+      const { token, isAnonymous } = data
       const { uid, name } = await firebase.admin.auth().verifyIdToken(token)
       const newArticleId = mongoose.Types.ObjectId()
       const newArticleBlocksList = []
+      const newAuthor = isAnonymous ? { uid, name: '匿名', isAnonymous } : { uid, name, isAnonymous }
       for (const block of data.blocks) {
-        const { blockId, contentId } = await createNewBlock(block, newArticleId, uid, name)
+        const { blockId, contentId } = await createNewBlock(block, newArticleId, newAuthor)
         block._id = blockId
         const blockAddToVersion = { blockId, contentId, revisionIndex: 0, order: 0 }
         newArticleBlocksList.push(blockAddToVersion)
@@ -159,10 +182,10 @@ module.exports = {
         _id: newArticleId,
         title: data.title,
         tags: data.tags,
-        authors: getUpdatedAuthors(data.authors, uid, name),
+        authors: getUpdatedAuthors(data.authors, newAuthor),
         category: data.category,
         createAt: new Date(data.createAt),
-        blocks: data.blocks.map(block => ({ ...block, authors: [{ uid, name }] }))
+        blocks: data.blocks.map(block => ({ ...block, authors: [newAuthor] }))
       })
 
       const version = new Version({
@@ -171,7 +194,7 @@ module.exports = {
           title: data.title,
           updatedAt: new Date(),
           blocks: newArticleBlocksList,
-          author: { uid, name },
+          author: newAuthor,
           versionIndex: 1
         }]
       })
@@ -213,8 +236,10 @@ module.exports = {
     console.log('updateArticleById: ' + req.body.id)
 
     try {
-      const { id, token } = req.body
+      const { id, token, isAnonymous } = req.body
+      console.log(typeof isAnonymous)
       const { uid, name } = await firebase.admin.auth().verifyIdToken(token)
+      const newAuthor = isAnonymous ? { uid, name: '匿名', isAnonymous } : { uid, name, isAnonymous }
       var article = await Article.findById(id).lean()
       if (article === undefined) {
         res.status(200).send({
@@ -223,159 +248,149 @@ module.exports = {
           message: '文章的ID輸入有誤，請重新查詢'
         })
       } else {
-        var errors
-        if (errors === undefined) {
-          let checkIfChange = false
-          const updateObj = req.body
-          if (!updateObj.isAnonymous) { updateObj.authors = getUpdatedAuthors(updateObj.authors, uid, name) }
-          const latestVersionBlocksList = []
-          const articleVersion = await Version.findOne({ articleId: article._id })
+        let checkIfChange = false
+        const updateObj = req.body
+        updateObj.authors = getUpdatedAuthors(updateObj.authors, newAuthor)
+        const latestVersionBlocksList = []
+        const articleVersion = await Version.findOne({ articleId: article._id })
 
-          // Find block id in update object
-          for (const [index, block] of updateObj.blocks.entries()) {
-            const articleBlock = article.blocks.find((ab) => {
-              if (block._id === undefined) {
-                // There is no _id property in new block
-                return false
-              } else {
-                return ab._id.toString() === block._id.toString()
-              }
-            })
-
-            if (articleBlock) { // if content has been changed
-              console.log('articleBlock')
-              // Find block, check different
-              if (diff.compareContent(block.content, articleBlock.content)) {
-                checkIfChange = true
-                console.log('diff.compareContent = true')
-                const newContent = new Content({
-                  blockId: block._id,
-                  articleId: article._id,
-                  content: block.content
-                })
-                await newContent.save()
-
-                const newBlock = await Block.findOne({ blockId: block._id })
-                newBlock.revisions.push({
-                  updatedAt: new Date(),
-                  contentId: newContent._id,
-                  blockTitle: block.blockTitle,
-                  author: { uid, name },
-                  revisionIndex: newBlock.revisions.length + 1
-                })
-                newBlock.authors = getUpdatedAuthors(newBlock.authors, uid, name)
-                updateObj.blocks[index].authors = getUpdatedAuthors(newBlock.authors, uid, name)
-                await newBlock.save()
-
-                latestVersionBlocksList.push({
-                  blockId: newContent.blockId,
-                  contentId: newContent._id,
-                  order: 0,
-                  revisionIndex: newBlock.revisions.length - 1,
-                  authors: newBlock.authors
-                })
-              } else if (block.blockTitle !== articleBlock.blockTitle) { // if only blocktitle has been changed
-                checkIfChange = true
-                console.log('only block title has been changed')
-                const newBlock = await Block.findOne({ blockId: block._id })
-                console.log(newBlock.revisions[newBlock.revisions.length - 1].contentId)
-                newBlock.revisions.push({
-                  updatedAt: new Date(),
-                  contentId: newBlock.revisions[newBlock.revisions.length - 1].contentId,
-                  blockTitle: block.blockTitle,
-                  author: { uid, name },
-                  revisionIndex: newBlock.revisions.length + 1
-                })
-                newBlock.authors = getUpdatedAuthors(newBlock.authors, uid, name)
-                updateObj.blocks[index].authors = getUpdatedAuthors(newBlock.authors, uid, name)
-                await newBlock.save()
-
-                latestVersionBlocksList.push({
-                  blockId: block.blockId,
-                  contentId: newBlock.revisions[newBlock.revisions.length - 1].contentId,
-                  order: 0,
-                  revisionIndex: newBlock.revisions.length - 1,
-                  authors: newBlock.authors
-                })
-              } else {
-                console.log('diff.compareContent = false')
-
-                const currentVersion = articleVersion.versions.length - 1
-                const targetCopiedBlock = articleVersion.versions[currentVersion].blocks.find((b) => {
-                  if (b.blockId === undefined) {
-                    return false
-                  } else {
-                    return b.blockId.toString() === block._id
-                  }
-                })
-                if (targetCopiedBlock) {
-                  console.log(`find block id: ${block._id}`)
-                  latestVersionBlocksList.push(targetCopiedBlock)
-                }
-              }
+        // Find block id in update object
+        for (const [index, block] of updateObj.blocks.entries()) {
+          const articleBlock = article.blocks.find((ab) => {
+            if (block._id === undefined) {
+              // There is no _id property in new block
+              return false
             } else {
+              return ab._id.toString() === block._id.toString()
+            }
+          })
+
+          if (articleBlock) { // if content has been changed
+            console.log('articleBlock')
+            // Find block, check different
+            if (diff.compareContent(block.content, articleBlock.content)) {
               checkIfChange = true
-              console.log('createNewBlock')
-              // { blockId: newContent.blockId, contentId: newContent._id, revisionId: newBlock.revisions[0]._id }
-              const { blockId, contentId } = await createNewBlock(block, article._id, uid, name)
-              block._id = blockId
+              console.log('diff.compareContent = true')
+              const newContent = new Content({
+                blockId: block._id,
+                articleId: article._id,
+                content: block.content
+              })
+              await newContent.save()
+
+              const newBlock = await Block.findOne({ blockId: block._id })
+              newBlock.revisions.push({
+                updatedAt: new Date(),
+                contentId: newContent._id,
+                blockTitle: block.blockTitle,
+                author: newAuthor,
+                revisionIndex: newBlock.revisions.length + 1
+              })
+              newBlock.authors = getUpdatedAuthors(newBlock.authors, newAuthor)
+              updateObj.blocks[index].authors = getUpdatedAuthors(newBlock.authors, newAuthor)
+              await newBlock.save()
+
               latestVersionBlocksList.push({
-                blockId,
-                contentId,
-                revisionIndex: 0,
+                blockId: newContent.blockId,
+                contentId: newContent._id,
                 order: 0,
-                authors: [{ uid, name }]
+                revisionIndex: newBlock.revisions.length - 1,
+                authors: newBlock.authors
               })
-            }
-          }
-          if (!checkIfChange) {
-            const detectArticle = Article.findOne({ _id: id })
-            if (detectArticle.title !== updateObj.title) { checkIfChange = true }
-          }
-          if (checkIfChange) {
-            const currentVersion = articleVersion.versions.length + 1
-            articleVersion.versions.push({
-              title: req.body.title,
-              author: { uid, name },
-              updatedAt: new Date(),
-              blocks: latestVersionBlocksList,
-              versionIndex: currentVersion
-            })
-            await Version.findOneAndUpdate({ articleId: article._id }, articleVersion, { new: true, upsert: true })
-            const latestNews = new LatestNews({
-              articleId: article._id,
-              updatedAt: new Date()
-            })
-            // 更新最新新聞
-            await latestNews.save()
-            await cleanLatestNews()
-          }
-          Article.findOneAndUpdate({ _id: id }, updateObj, { new: true, upsert: true }, (err, doc) => {
-            if (err) {
-              res.status(200).send({
-                code: 500,
-                type: 'error',
-                message: '更新文章時發生錯誤'
+            } else if (block.blockTitle !== articleBlock.blockTitle) { // if only blocktitle has been changed
+              checkIfChange = true
+              console.log('only block title has been changed')
+              const newBlock = await Block.findOne({ blockId: block._id })
+              console.log(newBlock.revisions[newBlock.revisions.length - 1].contentId)
+              newBlock.revisions.push({
+                updatedAt: new Date(),
+                contentId: newBlock.revisions[newBlock.revisions.length - 1].contentId,
+                blockTitle: block.blockTitle,
+                author: newAuthor,
+                revisionIndex: newBlock.revisions.length + 1
               })
-              return
+              newBlock.authors = getUpdatedAuthors(newBlock.authors, newAuthor)
+              updateObj.blocks[index].authors = getUpdatedAuthors(newBlock.authors, newAuthor)
+              await newBlock.save()
+
+              latestVersionBlocksList.push({
+                blockId: block.blockId,
+                contentId: newBlock.revisions[newBlock.revisions.length - 1].contentId,
+                order: 0,
+                revisionIndex: newBlock.revisions.length - 1,
+                authors: newBlock.authors
+              })
+            } else {
+              console.log('diff.compareContent = false')
+
+              const currentVersion = articleVersion.versions.length - 1
+              const targetCopiedBlock = articleVersion.versions[currentVersion].blocks.find((b) => {
+                if (b.blockId === undefined) {
+                  return false
+                } else {
+                  return b.blockId.toString() === block._id
+                }
+              })
+              if (targetCopiedBlock) {
+                console.log(`find block id: ${block._id}`)
+                latestVersionBlocksList.push(targetCopiedBlock)
+              }
             }
-            res.json({
-              code: 200,
-              type: 'success',
-              data: doc,
-              message: '已成功更新文章'
+          } else {
+            checkIfChange = true
+            console.log('createNewBlock')
+            // { blockId: newContent.blockId, contentId: newContent._id, revisionId: newBlock.revisions[0]._id }
+            const { blockId, contentId } = await createNewBlock(block, article._id, newAuthor)
+            block._id = blockId
+            latestVersionBlocksList.push({
+              blockId,
+              contentId,
+              revisionIndex: 0,
+              order: 0,
+              authors: [newAuthor]
             })
-            module.exports.updateArticleEditingCount(id)
-            // module.exports.storeArticleIdToFirestore(uid, id)
-          })
-        } else {
-          console.log(errors)
-          res.status(200).send({
-            code: 500,
-            type: 'error',
-            message: errors.message
-          })
+          }
         }
+        if (!checkIfChange) {
+          const detectArticle = Article.findOne({ _id: id })
+          if (detectArticle.title !== updateObj.title) { checkIfChange = true }
+        }
+        if (checkIfChange) {
+          const currentVersion = articleVersion.versions.length + 1
+          articleVersion.versions.push({
+            title: req.body.title,
+            author: newAuthor,
+            updatedAt: new Date(),
+            blocks: latestVersionBlocksList,
+            versionIndex: currentVersion
+          })
+          await Version.findOneAndUpdate({ articleId: article._id }, articleVersion, { new: true, upsert: true })
+          const latestNews = new LatestNews({
+            articleId: article._id,
+            updatedAt: new Date()
+          })
+          // 更新最新新聞
+          await latestNews.save()
+          await cleanLatestNews()
+        }
+        Article.findOneAndUpdate({ _id: id }, updateObj, { new: true, upsert: true }, (err, doc) => {
+          if (err) {
+            res.status(200).send({
+              code: 500,
+              type: 'error',
+              message: '更新文章時發生錯誤'
+            })
+            return
+          }
+          res.json({
+            code: 200,
+            type: 'success',
+            data: doc,
+            message: '已成功更新文章'
+          })
+          module.exports.updateArticleEditingCount(id)
+          // module.exports.storeArticleIdToFirestore(uid, id)
+        })
       }
     } catch (error) {
       console.log(error)
