@@ -5,12 +5,15 @@ router.route('/login')
   .post(ctrl.login)
 
 router.route('/profile')
-  .post(ctrl.getArticlesInfoById)
+  .post(ctrl.getProfileById)
 
 router.route('/profile/view')
   .post(ctrl.updateViewArticleToFirestore)
 
 router.route('/profile/subscribe')
   .post(ctrl.subscribeArticleById)
+
+router.route('/profile/article')
+  .post(ctrl.getArticlesInfo)
 
 module.exports = router

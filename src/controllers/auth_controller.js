@@ -1,5 +1,6 @@
 var firebase = require('../lib/firebase')
 var admin = require('firebase-admin')
+var Article = require('../models/article')
 
 const auth = {
   async login (req, res, next) {
@@ -37,8 +38,8 @@ const auth = {
       return doc.data()
     }
   },
-  async getArticlesInfoById (req, res) {
-    console.log('auth/getArticlesInfoById')
+  async getProfileById (req, res) {
+    console.log('auth/getProfileById')
     const token = req.body.token
     try {
       const { uid } = await firebase.admin.auth().verifyIdToken(token)
@@ -102,7 +103,6 @@ const auth = {
       })
     }
   },
-
   async subscribeArticleById (req, res) {
     const { articleId, token, subscribe } = req.body
     const { uid } = await firebase.admin.auth().verifyIdToken(token)
@@ -160,8 +160,61 @@ const auth = {
         message: error.message
       })
     }
-  }
+  },
+  getArticlesInfo
+}
 
+async function getArticlesInfo (req, res) {
+  console.log('auth/getArticlesInfo')
+  const { token } = req.body
+  try {
+    const { uid } = await firebase.admin.auth().verifyIdToken(token)
+    const userRef = firebase.db.collection('articles').doc(uid)
+    const doc = await userRef.get()
+    if (doc.exists) {
+      const editedArticleIds = doc.data().edited.map(edit => edit.articleId)
+      const viewedArticleIds = doc.data().viewed
+      const subscribedArticleIds = doc.data().subscribed
+      const q = handleGetArticlesByArray
+      const result = await Promise.all([q(editedArticleIds), q(viewedArticleIds), q(subscribedArticleIds)])
+      res.json({
+        code: 200,
+        type: 'success',
+        data: {
+          edited: result[0],
+          viewed: result[1],
+          subscribed: result[2]
+        }
+      })
+    } else {
+      res.json({
+        code: 200,
+        type: 'success',
+        data: {
+          edited: [],
+          viewed: [],
+          subscribed: []
+        }
+      })
+    }
+  } catch (error) {
+    console.log(error)
+    res.status(500).send({
+      code: 500,
+      type: 'error',
+      error
+    })
+  }
+}
+
+async function handleGetArticlesByArray (articleIds) {
+  try {
+    const doc = await Article.find({ _id: articleIds })
+    return Promise.resolve(doc)
+  } catch (error) {
+    console.log(error)
+    return Promise.reject(error)
+  }
 }
 
 module.exports = auth
