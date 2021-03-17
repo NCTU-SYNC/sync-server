@@ -12,13 +12,6 @@ const mongoose = require('mongoose')
 
 const isExistedAuthor = (originalAuthors, targetAuthor) => {
   return originalAuthors.some(author => JSON.stringify(author) === JSON.stringify(targetAuthor))
-  /* for (const author of originalAuthors) {
-    console.log(author, targetAuthor)
-    console.log(author.uid, targetAuthor.uid, author.uid === targetAuthor.uid)
-    console.log(author.name, targetAuthor.name, author.name === targetAuthor.name)
-    console.log(author.isAnonymous, targetAuthor.isAnonymous, author.isAnonymous === targetAuthor.isAnonymous)
-    return author.uid === targetAuthor.uid && author.name === targetAuthor.name && author.isAnonymous === targetAuthor.isAnonymouss
-  } */
 }
 
 const getUpdatedAuthors = (originalAuthors, targetAuthor) => {
@@ -213,7 +206,7 @@ module.exports = {
           message: '成功發布新文章',
           id: result.id
         })
-        // module.exports.storeArticleIdToFirestore(data.uid, result.id)
+        module.exports.storeArticleIdToFirestore(data.uid, result.id)
         return Promise.resolve()
       }).catch(error => {
         res.status(200).send({
@@ -389,7 +382,7 @@ module.exports = {
             message: '已成功更新文章'
           })
           module.exports.updateArticleEditingCount(id)
-          // module.exports.storeArticleIdToFirestore(uid, id)
+          module.exports.storeArticleIdToFirestore(uid, id)
         })
       }
     } catch (error) {
@@ -444,12 +437,27 @@ module.exports = {
     }
   },
   async storeArticleIdToFirestore (uid, articleId) {
-    const userRef = firebase.db.collection('users').doc(uid)
-    userRef.update({
-      editPostIds: admin.firestore.FieldValue.arrayUnion(articleId)
-    })
-      .then(res => console.log(res))
-      .catch(err => console.log(err))
+    const element = {
+      articleId, timeStamp: admin.firestore.Timestamp.now()
+    }
+    try {
+      const userRef = firebase.db.collection('articles').doc(uid)
+      const { exists } = await userRef.get()
+      if (!exists) {
+        userRef
+          .set({
+            edited: [element],
+            subscribed: [articleId]
+          }, { merge: true })
+      } else {
+        userRef.update({
+          edited: admin.firestore.FieldValue.arrayUnion(element),
+          subscribed: admin.firestore.FieldValue.arrayUnion(articleId)
+        })
+      }
+    } catch (error) {
+      console.log(error)
+    }
   },
   async getPopularArticle (req, res, next) {
     const latestNewsCount = await LatestNews.find({}).sort({ _id: -1 })

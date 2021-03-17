@@ -4,9 +4,6 @@ const ctrl = require('../controllers/article_controller')
 router.route('/article')
   .get(ctrl.getArticles)
 
-router.route('/article')
-  .get(ctrl.getPopularArticle)
-
 router.route('/article/:id')
   .get(ctrl.getArticleById)
 
