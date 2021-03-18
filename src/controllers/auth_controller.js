@@ -1,12 +1,13 @@
-var firebase = require('../lib/firebase')
-var admin = require('firebase-admin')
-var Article = require('../models/article')
+const firebase = require('../lib/firebase')
+const admin = require('firebase-admin')
+const Article = require('../models/article')
+const Utils = require('../utils')
 
 const auth = {
   async login (req, res, next) {
     try {
       const token = req.body.idToken
-      const uid = await auth.verifyIdToken(token)
+      const { uid } = await Utils.firebase.verifyIdToken(token)
       console.log('login uid: ' + uid)
       firebase.db.collection('users').doc(uid).set(req.body, { merge: true })
       res.status(200).send({
@@ -23,26 +24,11 @@ const auth = {
       })
     }
   },
-  async verifyIdToken (token) {
-    const decodedToken = await firebase.admin.auth().verifyIdToken(token)
-    return decodedToken.uid
-  },
-  async getUserInfoById (uid) {
-    const userRef = firebase.db.collection('users').doc(uid)
-    const doc = await userRef.get()
-    if (!doc.exists) {
-      console.log('No such document!')
-      return uid
-    } else {
-      console.log('Document data:', doc.data())
-      return doc.data()
-    }
-  },
   async getProfileById (req, res) {
     console.log('auth/getProfileById')
     const token = req.body.token
     try {
-      const { uid } = await firebase.admin.auth().verifyIdToken(token)
+      const { uid } = await Utils.firebase.verifyIdToken(token)
       const userRef = firebase.db.collection('articles').doc(uid)
       const doc = await userRef.get()
       if (!doc.exists) {
@@ -71,7 +57,7 @@ const auth = {
     console.log('auth/updateViewArticleToFirestore')
     const { token, articleId } = req.body
     try {
-      const { uid } = await firebase.admin.auth().verifyIdToken(token)
+      const { uid } = await Utils.firebase.verifyIdToken(token)
       const userRef = firebase.db.collection('articles').doc(uid)
       const doc = await userRef.get()
       if (!doc.exists) {
@@ -104,54 +90,19 @@ const auth = {
     }
   },
   async subscribeArticleById (req, res) {
-    const { articleId, token, subscribe } = req.body
-    const { uid } = await firebase.admin.auth().verifyIdToken(token)
     try {
-      const userRef = firebase.db.collection('articles').doc(uid)
-      const { exists } = await userRef.get()
-      if (subscribe === true) {
-        if (!exists) {
-          await userRef
-            .set({
-              subscribed: [articleId]
-            }, { merge: true })
-          res.json({
-            code: 200,
-            type: 'success',
-            message: '已成功更新加入追蹤'
-          })
-        } else {
-          await userRef.update({
-            subscribed: admin.firestore.FieldValue.arrayUnion(articleId)
-          })
-          res.json({
-            code: 200,
-            type: 'success',
-            message: '已成功加入追蹤'
-          })
-        }
-      } else if (subscribe === false) {
-        if (!exists) {
-          await userRef
-            .set({
-              subscribed: [articleId]
-            }, { merge: true })
-          res.json({
-            code: 200,
-            type: 'success',
-            message: '已成功取消追蹤'
-          })
-        } else {
-          await userRef.update({
-            subscribed: admin.firestore.FieldValue.arrayRemove(articleId)
-          })
-          res.json({
-            code: 200,
-            type: 'success',
-            message: '已成功取消追蹤'
-          })
-        }
+      const { articleId, token, subscribe } = req.body
+      if (!token) {
+        throw new Error('token 輸入有誤')
       }
+      const { uid } = await Utils.firebase.verifyIdToken(token)
+      const data = await Utils.firebase.handleSubscribeArticleById(uid, articleId, subscribe === true)
+      res.json({
+        code: 200,
+        type: 'success',
+        message: '已成功加入追蹤',
+        data: data
+      })
     } catch (error) {
       console.log(error)
       res.status(500).send({
@@ -168,7 +119,7 @@ async function getArticlesInfo (req, res) {
   console.log('auth/getArticlesInfo')
   const { token } = req.body
   try {
-    const { uid } = await firebase.admin.auth().verifyIdToken(token)
+    const { uid } = await Utils.firebase.verifyIdToken(token)
     const userRef = firebase.db.collection('articles').doc(uid)
     const doc = await userRef.get()
     if (doc.exists) {

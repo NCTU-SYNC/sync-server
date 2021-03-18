@@ -1,12 +1,11 @@
-var firebase = require('../lib/firebase')
-var admin = require('firebase-admin')
-var Article = require('../models/article')
-var Block = require('../models/block')
-var Content = require('../models/content')
-var Version = require('../models/version')
-var LatestNews = require('../models/latestNews')
-const auth = require('../controllers/auth_controller')
-const diff = require('../controllers/diff_controller')
+// Models
+const Article = require('../models/article')
+const Block = require('../models/block')
+const Content = require('../models/content')
+const Version = require('../models/version')
+const LatestNews = require('../models/latestNews')
+
+const Utils = require('../utils')
 
 const mongoose = require('mongoose')
 
@@ -155,16 +154,30 @@ module.exports = {
           }
         })
   },
-  async createArticle (req, res, next) {
-    console.log('createArticle')
+  async createArticle (req, res) {
+    console.log('article/createArticle')
     try {
-      const data = req.body
-      const { token, isAnonymous } = data
-      const { uid, name } = await firebase.admin.auth().verifyIdToken(token)
+      const {
+        token,
+        isAnonymous,
+        title,
+        blocks,
+        category,
+        tags
+      } = req.body
+      const createAt = new Date()
+
+      if (!token) {
+        throw new Error('登入逾時或失效')
+      }
+      if (!title) {
+        throw new Error('請輸入文章標題')
+      }
+      const { uid, name } = await Utils.firebase.verifyIdToken(token)
       const newArticleId = mongoose.Types.ObjectId()
       const newArticleBlocksList = []
       const newAuthor = isAnonymous ? { uid, name: '匿名', isAnonymous } : { uid, name, isAnonymous }
-      for (const block of data.blocks) {
+      for (const block of blocks) {
         const { blockId, contentId } = await createNewBlock(block, newArticleId, newAuthor)
         block._id = blockId
         const blockAddToVersion = { blockId, contentId, revisionIndex: 0, order: 0 }
@@ -173,19 +186,19 @@ module.exports = {
 
       const article = new Article({
         _id: newArticleId,
-        title: data.title,
-        tags: data.tags,
-        authors: getUpdatedAuthors(data.authors, newAuthor),
-        category: data.category,
-        createAt: new Date(data.createAt),
-        blocks: data.blocks.map(block => ({ ...block, authors: [newAuthor] }))
+        title,
+        tags,
+        authors: [newAuthor],
+        category,
+        createAt,
+        blocks: blocks.map(block => ({ ...block, authors: [newAuthor] }))
       })
 
       const version = new Version({
         articleId: article._id,
         versions: [{
-          title: data.title,
-          updatedAt: new Date(),
+          title,
+          updatedAt: createAt,
           blocks: newArticleBlocksList,
           author: newAuthor,
           versionIndex: 1
@@ -193,7 +206,7 @@ module.exports = {
       })
       const latestNews = new LatestNews({
         articleId: newArticleId,
-        updatedAt: new Date()
+        updatedAt: createAt
       })
       // 更新最新新聞
       await latestNews.save()
@@ -206,19 +219,19 @@ module.exports = {
           message: '成功發布新文章',
           id: result.id
         })
-        module.exports.storeArticleIdToFirestore(data.uid, result.id)
+        Utils.firebase.storeEditArticleRecord(uid, result.id)
         return Promise.resolve()
       }).catch(error => {
         res.status(200).send({
           code: 500,
           type: 'error',
-          message: '請輸入標題'
+          message: error.message
         })
         return Promise.reject(error)
       })
     } catch (error) {
       console.log(error)
-      res.status(500).send({
+      res.status(200).send({
         code: 500,
         type: 'error',
         message: error.message
@@ -227,11 +240,10 @@ module.exports = {
   },
   async updateArticleById (req, res, next) {
     console.log('updateArticleById: ' + req.body.id)
-
     try {
       const { id, token, isAnonymous } = req.body
       console.log(typeof isAnonymous)
-      const { uid, name } = await firebase.admin.auth().verifyIdToken(token)
+      const { uid, name } = await Utils.firebase.verifyIdToken(token)
       const newAuthor = isAnonymous ? { uid, name: '匿名', isAnonymous } : { uid, name, isAnonymous }
       var article = await Article.findById(id).lean()
       if (article === undefined) {
@@ -261,7 +273,7 @@ module.exports = {
           if (articleBlock) { // if content has been changed
             console.log('articleBlock')
             // Find block, check different
-            if (diff.compareContent(block.content, articleBlock.content)) {
+            if (Utils.diff.compareContent(block.content, articleBlock.content)) {
               checkIfChange = true
               console.log('diff.compareContent = true')
               const newContent = new Content({
@@ -381,8 +393,9 @@ module.exports = {
             data: doc,
             message: '已成功更新文章'
           })
-          module.exports.updateArticleEditingCount(id)
-          module.exports.storeArticleIdToFirestore(uid, id)
+          console.log(Utils.article)
+          Utils.article.updateArticleEditedCount(id)
+          Utils.firebase.storeEditArticleRecord(uid, id)
         })
       }
     } catch (error) {
@@ -394,36 +407,13 @@ module.exports = {
       })
     }
   },
-  updateArticleEditingCount (articleId) {
-    Article.findOneAndUpdate({ _id: articleId }, { $inc: { editedCount: 1 } }, { new: true, upsert: true }, (err, doc) => {
-      if (err) {
-        console.log(err)
-      } else {
-        console.log(doc)
-        console.log('已更新', articleId)
-      }
-    })
-  },
-  async getArticleAuthorsByAuthorIds (authors) {
-    try {
-      const authorsArray = []
-      for (const author of authors) {
-        const { displayName } = await auth.getUserInfoById(author.uid)
-        authorsArray.push({ uid: author.uid, displayName: displayName })
-      }
-      return Promise.resolve(authorsArray)
-    } catch (error) {
-      console.log(error)
-      return Promise.reject(error)
-    }
-  },
   async getArticleAuthors (req, res, next) {
     try {
       const articleId = req.params.id
       const doc = await Article.findById(articleId).exec()
       const authors = []
       for (const author of doc.authors) {
-        const { displayName } = await auth.getUserInfoById(author.uid)
+        const { displayName } = await Utils.firebase.getUserInfoById(author.uid)
         authors.push({ uid: author.uid, displayName: displayName })
       }
       res.status(200).send({
@@ -432,29 +422,6 @@ module.exports = {
         data: authors,
         message: '已成功抓取作者'
       })
-    } catch (error) {
-      console.log(error)
-    }
-  },
-  async storeArticleIdToFirestore (uid, articleId) {
-    const element = {
-      articleId, timeStamp: admin.firestore.Timestamp.now()
-    }
-    try {
-      const userRef = firebase.db.collection('articles').doc(uid)
-      const { exists } = await userRef.get()
-      if (!exists) {
-        userRef
-          .set({
-            edited: [element],
-            subscribed: [articleId]
-          }, { merge: true })
-      } else {
-        userRef.update({
-          edited: admin.firestore.FieldValue.arrayUnion(element),
-          subscribed: admin.firestore.FieldValue.arrayUnion(articleId)
-        })
-      }
     } catch (error) {
       console.log(error)
     }
