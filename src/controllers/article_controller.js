@@ -51,30 +51,9 @@ async function createNewBlock (recBlock, articleId, author) {
   await newBlock.save()
   return { blockId: newContent.blockId, contentId: newContent._id, revisionId: newBlock.revisions[0]._id }
 }
-async function cleanLatestNews () {
-  var latestNewsCount = await LatestNews.find({})
-  for (var news in latestNewsCount) {
-    var tempLatestNews = latestNewsCount
-    tempLatestNews = tempLatestNews.slice(Number(news) + 1)
-    for (var competeNews of tempLatestNews) {
-      if (String(competeNews.articleId) === String(latestNewsCount[news].articleId)) {
-        // LatestNews.findByIdAndDelete(mongoose.Types.ObjectId(competeNews._id))
-        await LatestNews.findByIdAndDelete(competeNews._id)
-      }
-    }
-  }
-  while (1) {
-    latestNewsCount = await LatestNews.find({})
-    if (latestNewsCount.length > 10) {
-      await LatestNews.findByIdAndDelete(latestNewsCount[0]._id)
-    } else {
-      break
-    }
-  }
-}
+
 module.exports = {
   getArticles (req, res, next) {
-    cleanLatestNews()
     const keyword = req.query.q || ''
     const limit = Number(req.query.limit)
     console.log('getArticles: ' + keyword + ',' + limit)
@@ -209,8 +188,11 @@ module.exports = {
         updatedAt: createAt
       })
       // 更新最新新聞
+      const latestNewsCount = await LatestNews.find({})
+      if (latestNewsCount.length >= 10) {
+        await LatestNews.findByIdAndDelete(latestNewsCount[0]._id)
+      }
       await latestNews.save()
-      await cleanLatestNews()
       await version.save()
       await article.save().then(result => {
         res.status(200).send({
@@ -375,8 +357,21 @@ module.exports = {
             updatedAt: new Date()
           })
           // 更新最新新聞
+          const latestNewsCount = await LatestNews.find({})
+          var repeatLatestNewsFlag = Boolean(false)
+          for (const news of latestNewsCount) {
+            if (String(news.articleId) === String(latestNews.articleId)) {
+              await LatestNews.findOneAndDelete({ articleId: news.articleId })
+              repeatLatestNewsFlag = true
+              break
+            }
+          }
+          if (repeatLatestNewsFlag === false) {
+            if (latestNewsCount.length >= 10) {
+              await LatestNews.findByIdAndDelete(latestNewsCount[0]._id)
+            }
+          }
           await latestNews.save()
-          await cleanLatestNews()
         }
         Article.findOneAndUpdate({ _id: id }, updateObj, { new: true, upsert: true }, (err, doc) => {
           if (err) {
