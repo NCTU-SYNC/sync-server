@@ -40,6 +40,7 @@ const versionSchema = new mongoose.Schema({
       type: Object,
       required: true
     },
+    citations: [],
     versionIndex: {
       type: Number,
       required: true

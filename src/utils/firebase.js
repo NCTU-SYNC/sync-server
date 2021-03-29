@@ -56,6 +56,9 @@ async function handleSubscribeArticleById (uid, articleId, isSubscribe) {
     const doc = await userRef.get()
     const subscribedList = doc.get('subscribed')
     const { exists } = doc
+    if (!articleId) {
+      return Promise.reject(new Error('請輸入正確的文章ID'))
+    }
     if (isSubscribe) {
       if (!exists) {
         await userRef

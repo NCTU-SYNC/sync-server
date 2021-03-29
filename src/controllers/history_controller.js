@@ -89,7 +89,6 @@ module.exports = {
     const versionsData = versionInstance.versions.reverse().slice(
       from, to
     )
-    console.log(from, to)
     const doc = {
       currentVersion: {
         title: currentViewVersion.title,

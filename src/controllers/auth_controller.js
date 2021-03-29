@@ -100,7 +100,7 @@ const auth = {
       res.json({
         code: 200,
         type: 'success',
-        message: '已成功加入追蹤',
+        message: '已成功修改追蹤',
         data: data
       })
     } catch (error) {
@@ -123,9 +123,12 @@ async function getArticlesInfo (req, res) {
     const userRef = firebase.db.collection('articles').doc(uid)
     const doc = await userRef.get()
     if (doc.exists) {
-      const editedArticleIds = doc.data().edited.map(edit => edit.articleId)
-      const viewedArticleIds = doc.data().viewed
-      const subscribedArticleIds = doc.data().subscribed
+      const editedList = doc.data().edited || []
+      const viewed = doc.data().viewed || []
+      const subscribed = doc.data().subscribed || []
+      const editedArticleIds = editedList.map(edit => edit.articleId)
+      const viewedArticleIds = viewed
+      const subscribedArticleIds = subscribed
       const q = handleGetArticlesByArray
       const result = await Promise.all([q(editedArticleIds), q(viewedArticleIds), q(subscribedArticleIds)])
       res.json({

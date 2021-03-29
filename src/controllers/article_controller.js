@@ -142,7 +142,8 @@ module.exports = {
         title,
         blocks,
         category,
-        tags
+        tags,
+        citations
       } = req.body
       const createAt = new Date()
 
@@ -163,12 +164,23 @@ module.exports = {
         newArticleBlocksList.push(blockAddToVersion)
       }
 
+      // 過濾使用者傳入的陣列
+      const pureCitations = []
+      if (citations && Array.isArray(citations)) {
+        for (const c of citations) {
+          if (c.title && c.url) {
+            pureCitations.push({ title: c.title, url: c.url })
+          }
+        }
+      }
+
       const article = new Article({
         _id: newArticleId,
         title,
         tags,
         authors: [newAuthor],
         category,
+        citations: pureCitations,
         createAt,
         blocks: blocks.map(block => ({ ...block, authors: [newAuthor] }))
       })
@@ -177,6 +189,7 @@ module.exports = {
         articleId: article._id,
         versions: [{
           title,
+          citations: pureCitations,
           updatedAt: createAt,
           blocks: newArticleBlocksList,
           author: newAuthor,

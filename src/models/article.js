@@ -2,7 +2,7 @@ const mongoose = require('mongoose')
 
 const blockSchema = new mongoose.Schema({
   id: {
-    type: Number,
+    type: String,
     required: true
   },
   blockTitle: {
@@ -40,6 +40,7 @@ const articleSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  citations: [],
   createdAt: {
     type: Date,
     default: Date.now
