@@ -4,7 +4,7 @@ const Block = require('../models/block')
 const Content = require('../models/content')
 const Version = require('../models/version')
 const LatestNews = require('../models/latestNews')
-
+const DiffMatchPatch = require('diff-match-patch')
 const Utils = require('../utils')
 
 const mongoose = require('mongoose')
@@ -50,6 +50,104 @@ async function createNewBlock (recBlock, articleId, author) {
   await newContent.save()
   await newBlock.save()
   return { blockId: newContent.blockId, contentId: newContent._id, revisionId: newBlock.revisions[0]._id }
+}
+function getPlainText (blockContent) {
+  let content = ''
+  blockContent.content.forEach(paragraph => {
+    if (paragraph.content) {
+      paragraph.content.forEach(text => {
+        content += text.text
+      })
+    }
+    content += '\n\n'
+  })
+  return content
+}
+async function compareArticleByWord (blocks1, blocks2) {
+  const dmp = new DiffMatchPatch()
+  // diff 的陣列
+  const articleDiff = []
+  // 存放 diff base 和 compare 的 dictionary
+  const diffDict = {}
+  // 排列 diff id 順序的陣列
+  const diffOrderArr = []
+  for (const block of blocks1.blocks) {
+    // 確認有blockId
+    if (block._id) {
+      // 確認字典裡面尚無 blockId
+      if (diffDict[block._id] === undefined) {
+        diffOrderArr.push(block._id)
+        // 設定 base 的標題與文字
+        diffDict[block._id] = {
+          base: {
+            title: block.blockTitle,
+            text: getPlainText(block.content)
+          }
+        }
+      }
+    }
+  }
+
+  let i = 0
+  for (const block of blocks2.blocks) {
+    // 確認有blockId
+    if (block._id) {
+      // 若比較的版本有插入新段落，則在 order 陣列新增，待會則照順序查看陣列
+      if (!diffOrderArr.includes(block._id)) {
+        diffOrderArr.splice(i, 0, block._id)
+      }
+      // 確認字典裡面尚無 blockId
+      if (diffDict[block._id] === undefined) {
+        diffDict[block._id] = {
+          // 設定 compare 的標題與文字
+          compare: {
+            title: block.blockTitle,
+            text: getPlainText(block.content)
+          }
+        }
+      } else {
+        // 設定 compare 的標題與文字
+        diffDict[block._id].compare = {
+          title: block.blockTitle,
+          text: getPlainText(block.content)
+        }
+      }
+    }
+    i += 1
+  }
+  let greenWordCount = 0
+  let redWordCount = 0
+  for (const blockId of diffOrderArr) {
+    const empty = {
+      title: '',
+      text: ''
+    }
+    // 設定 base，若無 base 則給予空物件比對
+    const base = diffDict[blockId] ? diffDict[blockId].base ? diffDict[blockId].base : empty : empty
+    // 設定 base，若無 base 則給予空物件比對
+    const compare = diffDict[blockId] ? diffDict[blockId].compare ? diffDict[blockId].compare : empty : empty
+    const titleDiff = dmp.diff_main(base.title, compare.title)
+    const contentDiff = dmp.diff_main(base.text, compare.text)
+    dmp.diff_cleanupSemantic(titleDiff)
+    dmp.diff_cleanupSemantic(contentDiff)
+    articleDiff.push({ titleDiff, contentDiff })
+    for (const titleElement of titleDiff) {
+      if (titleElement[0] === 1) {
+        greenWordCount += titleElement[1].length
+      } else if (titleElement[0] === -1) {
+        redWordCount += titleElement[1].length
+      }
+    }
+    for (const contentElement of contentDiff) {
+      if (contentElement[0] === 1) {
+        greenWordCount += contentElement[1].length
+      } else if (contentElement[0] === -1) {
+        redWordCount += contentElement[1].length
+      }
+    }
+  }
+  console.log({ greenWordCount, redWordCount })
+  return { greenWordCount, redWordCount }
 }
 
 module.exports = {
@@ -385,6 +483,10 @@ module.exports = {
             }
           }
           await latestNews.save()
+          const oldArticle = await Article.findOne({ _id: id })
+          const { greenWordCount, redWordCount } = await compareArticleByWord(updateObj, oldArticle)
+          updateObj.greenWordCount = greenWordCount
+          updateObj.redWordCount = redWordCount
         }
         Article.findOneAndUpdate({ _id: id }, updateObj, { new: true, upsert: true }, (err, doc) => {
           if (err) {
