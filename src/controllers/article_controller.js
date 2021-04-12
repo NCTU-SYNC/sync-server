@@ -115,8 +115,8 @@ async function compareArticleByWord (blocks1, blocks2) {
     }
     i += 1
   }
-  let greenWordCount = 0
-  let redWordCount = 0
+  let addedWordCount = 0
+  let deletedWordCount = 0
   for (const blockId of diffOrderArr) {
     const empty = {
       title: '',
@@ -133,21 +133,21 @@ async function compareArticleByWord (blocks1, blocks2) {
     articleDiff.push({ titleDiff, contentDiff })
     for (const titleElement of titleDiff) {
       if (titleElement[0] === 1) {
-        greenWordCount += titleElement[1].length
+        addedWordCount += titleElement[1].length
       } else if (titleElement[0] === -1) {
-        redWordCount += titleElement[1].length
+        deletedWordCount += titleElement[1].length
       }
     }
     for (const contentElement of contentDiff) {
       if (contentElement[0] === 1) {
-        greenWordCount += contentElement[1].length
+        addedWordCount += contentElement[1].length
       } else if (contentElement[0] === -1) {
-        redWordCount += contentElement[1].length
+        deletedWordCount += contentElement[1].length
       }
     }
   }
-  console.log({ greenWordCount, redWordCount })
-  return { greenWordCount, redWordCount }
+  console.log({ addedWordCount, deletedWordCount })
+  return { addedWordCount, deletedWordCount }
 }
 
 module.exports = {
@@ -484,9 +484,11 @@ module.exports = {
           }
           await latestNews.save()
           const oldArticle = await Article.findOne({ _id: id })
-          const { greenWordCount, redWordCount } = await compareArticleByWord(updateObj, oldArticle)
-          updateObj.greenWordCount = greenWordCount
-          updateObj.redWordCount = redWordCount
+          const { addedWordCount, deletedWordCount } = await compareArticleByWord(updateObj, oldArticle)
+          updateObj.wordsChanged = {
+            added: addedWordCount,
+            deleted: deletedWordCount
+          }
         }
         Article.findOneAndUpdate({ _id: id }, updateObj, { new: true, upsert: true }, (err, doc) => {
           if (err) {
