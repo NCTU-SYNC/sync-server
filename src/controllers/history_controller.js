@@ -143,7 +143,7 @@ module.exports = {
       articles.push({
         title: tempViewVersion.title,
         author: tempViewVersion.author,
-        updateAt: tempViewVersion.updateAt,
+        updatedAt: tempViewVersion.updatedAt,
         versionIndex: tempViewVersion.versionIndex,
         blocks: tempContent
       })
