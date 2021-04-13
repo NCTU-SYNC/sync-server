@@ -121,6 +121,7 @@ async function getArticlesInfo (req, res) {
   try {
     const { uid } = await Utils.firebase.verifyIdToken(token)
     const userRef = firebase.db.collection('articles').doc(uid)
+    const points = await Utils.firebase.handleGetUserPoints(uid)
     const doc = await userRef.get()
     if (doc.exists) {
       const editedList = doc.data().edited || []
@@ -137,7 +138,8 @@ async function getArticlesInfo (req, res) {
         data: {
           edited: result[0],
           viewed: result[1],
-          subscribed: result[2]
+          subscribed: result[2],
+          points
         }
       })
     } else {
@@ -147,7 +149,8 @@ async function getArticlesInfo (req, res) {
         data: {
           edited: [],
           viewed: [],
-          subscribed: []
+          subscribed: [],
+          points: 0
         }
       })
     }

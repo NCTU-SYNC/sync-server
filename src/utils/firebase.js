@@ -88,9 +88,52 @@ async function handleSubscribeArticleById (uid, articleId, isSubscribe) {
   }
 }
 
+async function handleAddUserPoints (uid, point) {
+  try {
+    const userRef = firebase.db.collection('points').doc(uid)
+    const doc = await userRef.get()
+    const points = doc.get('points')
+    const { exists } = doc
+    if (!exists) {
+      await userRef
+        .set({
+          points: point
+        }, { merge: true })
+      return Promise.resolve(point)
+    } else {
+      await userRef.update({
+        points: points + point
+      })
+      return Promise.resolve(points + point)
+    }
+  } catch (error) {
+    console.log(error)
+    return Promise.reject(error)
+  }
+}
+
+async function handleGetUserPoints (uid) {
+  try {
+    const userRef = firebase.db.collection('points').doc(uid)
+    const doc = await userRef.get()
+    const points = doc.get('points')
+    const { exists } = doc
+    if (!exists) {
+      return Promise.resolve(0)
+    } else {
+      return Promise.resolve(points)
+    }
+  } catch (error) {
+    console.log(error)
+    return Promise.reject(error)
+  }
+}
+
 module.exports = {
   verifyIdToken,
   getUserInfoById,
   storeEditArticleRecord,
-  handleSubscribeArticleById
+  handleSubscribeArticleById,
+  handleAddUserPoints,
+  handleGetUserPoints
 }

@@ -313,6 +313,7 @@ module.exports = {
           id: result.id
         })
         Utils.firebase.storeEditArticleRecord(uid, result.id)
+        Utils.firebase.handleAddUserPoints(uid, 5)
         return Promise.resolve()
       }).catch(error => {
         res.status(200).send({
@@ -508,6 +509,7 @@ module.exports = {
           console.log(Utils.article)
           Utils.article.updateArticleEditedCount(id)
           Utils.firebase.storeEditArticleRecord(uid, id)
+          Utils.firebase.handleAddUserPoints(uid, 2)
         })
       }
     } catch (error) {
