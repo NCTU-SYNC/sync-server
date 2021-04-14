@@ -141,6 +141,7 @@ module.exports = {
         }
       }
       articles.push({
+        citations: tempViewVersion.citations,
         title: tempViewVersion.title,
         author: tempViewVersion.author,
         updatedAt: tempViewVersion.updatedAt,

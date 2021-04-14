@@ -450,13 +450,48 @@ module.exports = {
             })
           }
         }
-        if (!checkIfChange) {
-          const detectArticle = Article.findOne({ _id: id })
-          if (detectArticle.title !== updateObj.title) { checkIfChange = true }
+
+        // 檢查是否有更新新聞引用
+        // 過濾使用者傳入的陣列
+        const pureCitations = []
+        const citations = req.body.citations
+        if (citations && Array.isArray(citations)) {
+          for (const c of citations) {
+            if (c.title && c.url) {
+              pureCitations.push({ title: c.title, url: c.url })
+            }
+          }
         }
+
+        // 確認是否有變更標題或是引用
+        if (!checkIfChange) {
+          console.log('The content has not change in article, detect other changes')
+          const detectArticle = await Article.findOne({ _id: id })
+          if (detectArticle.title !== updateObj.title) {
+            console.log('title is changed')
+            checkIfChange = true
+          }
+          if (detectArticle.citations.length !== pureCitations.length) {
+            console.log('citations has changed')
+            checkIfChange = true
+          } else {
+            const result = pureCitations.every((element, index) => {
+              return element.url === detectArticle.citations[index].url &&
+              element.title === detectArticle.citations[index].title
+            })
+            console.log('compare citations result', result)
+            if (!result) {
+              console.log('citations length is same, but element has changed')
+              checkIfChange = true
+            }
+          }
+        }
+
+        console.log(`The article has ${checkIfChange ? '' : 'not'} changed`)
         if (checkIfChange) {
           const currentVersion = articleVersion.versions.length + 1
           articleVersion.versions.push({
+            citations: pureCitations,
             title: req.body.title,
             author: newAuthor,
             updatedAt: new Date(),
@@ -490,27 +525,34 @@ module.exports = {
             added: addedWordCount,
             deleted: deletedWordCount
           }
-        }
-        Article.findOneAndUpdate({ _id: id }, updateObj, { new: true, upsert: true }, (err, doc) => {
-          if (err) {
-            res.status(200).send({
-              code: 500,
-              type: 'error',
-              message: '更新文章時發生錯誤'
+
+          Article.findOneAndUpdate({ _id: id }, updateObj, { new: true, upsert: true }, (err, doc) => {
+            if (err) {
+              res.status(200).send({
+                code: 500,
+                type: 'error',
+                message: '更新文章時發生錯誤'
+              })
+              return
+            }
+            res.json({
+              code: 200,
+              type: 'success',
+              data: doc,
+              message: '已成功更新文章'
             })
-            return
-          }
-          res.json({
-            code: 200,
-            type: 'success',
-            data: doc,
-            message: '已成功更新文章'
+            console.log(Utils.article)
+            Utils.article.updateArticleEditedCount(id)
+            Utils.firebase.storeEditArticleRecord(uid, id)
+            Utils.firebase.handleAddUserPoints(uid, 2)
           })
-          console.log(Utils.article)
-          Utils.article.updateArticleEditedCount(id)
-          Utils.firebase.storeEditArticleRecord(uid, id)
-          Utils.firebase.handleAddUserPoints(uid, 2)
-        })
+        } else {
+          res.status(200).send({
+            code: 500,
+            type: 'error',
+            message: '文章內容與前一版本相符，故無法更新'
+          })
+        }
       }
     } catch (error) {
       console.log(error)
