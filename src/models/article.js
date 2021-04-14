@@ -65,16 +65,6 @@ const articleSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  wordsChanged: {
-    added: {
-      type: Number,
-      default: 0
-    },
-    deleted: {
-      type: Number,
-      default: 0
-    }
-  },
   blocks: [blockSchema]
 })
 

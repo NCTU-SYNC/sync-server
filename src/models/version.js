@@ -44,6 +44,16 @@ const versionSchema = new mongoose.Schema({
     versionIndex: {
       type: Number,
       required: true
+    },
+    wordsChanged: {
+      added: {
+        type: Number,
+        default: 0
+      },
+      deleted: {
+        type: Number,
+        default: 0
+      }
     }
   }]
 })

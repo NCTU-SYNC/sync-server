@@ -133,19 +133,21 @@ async function compareArticleByWord (blocks1, blocks2) {
     articleDiff.push({ titleDiff, contentDiff })
     for (const titleElement of titleDiff) {
       if (titleElement[0] === 1) {
-        addedWordCount += titleElement[1].length
-      } else if (titleElement[0] === -1) {
         deletedWordCount += titleElement[1].length
+      } else if (titleElement[0] === -1) {
+        addedWordCount += titleElement[1].length
       }
     }
     for (const contentElement of contentDiff) {
       if (contentElement[0] === 1) {
-        addedWordCount += contentElement[1].length
-      } else if (contentElement[0] === -1) {
         deletedWordCount += contentElement[1].length
+      } else if (contentElement[0] === -1) {
+        addedWordCount += contentElement[1].length
       }
     }
   }
+  addedWordCount = addedWordCount / 2
+  deletedWordCount = deletedWordCount / 2
   console.log({ addedWordCount, deletedWordCount })
   return { addedWordCount, deletedWordCount }
 }
@@ -489,6 +491,8 @@ module.exports = {
 
         console.log(`The article has ${checkIfChange ? '' : 'not'} changed`)
         if (checkIfChange) {
+          const oldArticle = await Article.findOne({ _id: id })
+          const { addedWordCount, deletedWordCount } = await compareArticleByWord(updateObj, oldArticle)
           const currentVersion = articleVersion.versions.length + 1
           articleVersion.versions.push({
             citations: pureCitations,
@@ -496,7 +500,11 @@ module.exports = {
             author: newAuthor,
             updatedAt: new Date(),
             blocks: latestVersionBlocksList,
-            versionIndex: currentVersion
+            versionIndex: currentVersion,
+            wordsChanged: {
+              added: addedWordCount,
+              deleted: deletedWordCount
+            }
           })
           await Version.findOneAndUpdate({ articleId: article._id }, articleVersion, { new: true, upsert: true })
           const latestNews = new LatestNews({
@@ -519,12 +527,6 @@ module.exports = {
             }
           }
           await latestNews.save()
-          const oldArticle = await Article.findOne({ _id: id })
-          const { addedWordCount, deletedWordCount } = await compareArticleByWord(updateObj, oldArticle)
-          updateObj.wordsChanged = {
-            added: addedWordCount,
-            deleted: deletedWordCount
-          }
 
           Article.findOneAndUpdate({ _id: id }, updateObj, { new: true, upsert: true }, (err, doc) => {
             if (err) {
