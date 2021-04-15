@@ -32,6 +32,9 @@ async function storeEditArticleRecord (uid, articleId) {
   }
   try {
     const userRef = firebase.db.collection('articles').doc(uid)
+    const doc = await userRef.get()
+    const editedList = doc.get('edited') || []
+    const subscribedList = doc.get('subscribed') || []
     const { exists } = await userRef.get()
     if (!exists) {
       userRef
@@ -40,21 +43,45 @@ async function storeEditArticleRecord (uid, articleId) {
           subscribed: [articleId]
         }, { merge: true })
     } else {
+      // Replace or push element in/to arrays
+      const editedIndex = editedList.findIndex(s => s.articleId === articleId)
+      const subscribedIndex = subscribedList.findIndex(s => s.articleId === articleId)
+
+      if (editedIndex >= 0) {
+        editedList[editedIndex] = element
+      } else {
+        editedList.push(element)
+      }
+
+      if (subscribedIndex >= 0) {
+        subscribedList[subscribedIndex] = element
+      } else {
+        subscribedList.push(element)
+      }
+
       userRef.update({
-        edited: admin.firestore.FieldValue.arrayUnion(element),
-        subscribed: admin.firestore.FieldValue.arrayUnion(articleId)
+        edited: editedList,
+        subscribed: subscribedList
+      })
+      return Promise.resolve({
+        edited: editedList,
+        subscribed: subscribedList
       })
     }
   } catch (error) {
     console.log(error)
+    return Promise.reject(error)
   }
 }
 
 async function handleSubscribeArticleById (uid, articleId, isSubscribe) {
+  const element = {
+    articleId, timeStamp: admin.firestore.Timestamp.now()
+  }
   try {
     const userRef = firebase.db.collection('articles').doc(uid)
     const doc = await userRef.get()
-    const subscribedList = doc.get('subscribed')
+    const subscribedList = doc.get('subscribed') || []
     const { exists } = doc
     if (!articleId) {
       return Promise.reject(new Error('請輸入正確的文章ID'))
@@ -63,23 +90,33 @@ async function handleSubscribeArticleById (uid, articleId, isSubscribe) {
       if (!exists) {
         await userRef
           .set({
-            subscribed: [articleId]
+            subscribed: [element]
           }, { merge: true })
-        return Promise.resolve([articleId])
+        return Promise.resolve([element])
       } else {
-        await userRef.update({
-          subscribed: admin.firestore.FieldValue.arrayUnion(articleId)
-        })
-        return Promise.resolve([...subscribedList, articleId])
+        const index = subscribedList.findIndex(s => s.articleId === articleId)
+        if (index >= 0) {
+          subscribedList[index] = element
+          await userRef.update({
+            subscribed: subscribedList
+          })
+          return Promise.resolve(subscribedList)
+        } else {
+          await userRef.update({
+            subscribed: admin.firestore.FieldValue.arrayUnion(element)
+          })
+          return Promise.resolve([...subscribedList, element])
+        }
       }
     } else {
       if (!exists) {
         return Promise.resolve([])
       } else {
+        const newList = [...subscribedList].filter(s => s.articleId !== articleId)
         await userRef.update({
-          subscribed: admin.firestore.FieldValue.arrayRemove(articleId)
+          subscribed: newList
         })
-        return Promise.resolve(subscribedList.filter(id => id === articleId))
+        return Promise.resolve(newList)
       }
     }
   } catch (error) {
