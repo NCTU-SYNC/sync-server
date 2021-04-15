@@ -415,7 +415,7 @@ module.exports = {
               await newBlock.save()
 
               latestVersionBlocksList.push({
-                blockId: block.blockId,
+                blockId: block._id,
                 contentId: newBlock.revisions[newBlock.revisions.length - 1].contentId,
                 order: 0,
                 revisionIndex: newBlock.revisions.length - 1,
