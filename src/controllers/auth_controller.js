@@ -38,10 +38,43 @@ const auth = {
           data: {}
         })
       } else {
+        const subscribedList = doc.get('subscribed') || []
+        const originalNotificationsList = await Utils.firebase.getNotificationsByUid(uid)
+        console.log(originalNotificationsList)
+        const queryArray = subscribedList.map(s => s.articleId)
+        const result = await Article.find({ _id: { $in: queryArray } })
+        const newUpdatedArticlesList = []
+        for (const subscribed of subscribedList) {
+          console.log(`check ${subscribed.articleId} in database`)
+          const article = result.find(r => r._id.toString() === subscribed.articleId)
+          console.log(subscribed.timeStamp, subscribed.timeStamp.toDate())
+          if (!article) {
+            // ArticleId is not found in database, skip
+            console.log(`skip ${subscribed.articleId}, not found`)
+            continue
+          }
+          console.log(subscribed.timeStamp.toDate(), article.lastUpdatedAt, subscribed.timeStamp.toDate() < article.lastUpdatedAt)
+          if (subscribed.timeStamp && article.lastUpdatedAt && subscribed.timeStamp.toDate() < article.lastUpdatedAt) {
+            console.log('found article updated')
+            newUpdatedArticlesList.push({ articleId: subscribed.articleId, type: 'update', lastUpdatedAt: article.lastUpdatedAt, title: article.title })
+          }
+        }
+
+        newUpdatedArticlesList.sort((a, b) => a.lastUpdatedAt - b.lastUpdatedAt)
+        let notifications = [...originalNotificationsList, ...newUpdatedArticlesList]
+        console.log(notifications)
+
+        if (newUpdatedArticlesList.length > 0) {
+          notifications = await Utils.firebase.handleStoreNotifications(uid, newUpdatedArticlesList)
+        }
+
         res.json({
           code: 200,
           type: 'success',
-          data: doc.data()
+          data: {
+            articles: doc.data(),
+            notifications
+          }
         })
       }
     } catch (error) {
@@ -65,21 +98,24 @@ const auth = {
           .set({
             viewed: [articleId]
           }, { merge: true })
-        res.json({
-          code: 200,
-          type: 'success',
-          message: '已更新瀏覽記錄'
-        })
       } else {
-        userRef.update({
-          viewed: admin.firestore.FieldValue.arrayUnion(articleId)
-        })
-        res.json({
-          code: 200,
-          type: 'success',
-          message: '已更新瀏覽記錄'
-        })
+        const subscribedList = doc.get('subscribed') || []
+        const articleIndex = subscribedList.findIndex(s => s.articleId === articleId)
+        if (articleIndex >= 0) {
+          subscribedList[articleIndex].timeStamp = admin.firestore.Timestamp.now()
+
+          userRef.update({
+            viewed: admin.firestore.FieldValue.arrayUnion(articleId),
+            subscribed: subscribedList
+          })
+        }
       }
+
+      res.json({
+        code: 200,
+        type: 'success',
+        message: '已更新瀏覽記錄'
+      })
     } catch (error) {
       console.log(error)
       res.status(500).send({
@@ -125,11 +161,11 @@ async function getArticlesInfo (req, res) {
     const doc = await userRef.get()
     if (doc.exists) {
       const editedList = doc.data().edited || []
-      const viewed = doc.data().viewed || []
-      const subscribed = doc.data().subscribed || []
-      const editedArticleIds = editedList.map(edit => edit.articleId)
-      const viewedArticleIds = viewed
-      const subscribedArticleIds = subscribed
+      const viewedList = doc.data().viewed || []
+      const subscribedList = doc.data().subscribed || []
+      const editedArticleIds = editedList.map(edited => edited.articleId)
+      const viewedArticleIds = viewedList
+      const subscribedArticleIds = subscribedList.map(subscribed => subscribed.articleId)
       const q = handleGetArticlesByArray
       const result = await Promise.all([q(editedArticleIds), q(viewedArticleIds), q(subscribedArticleIds)])
       res.json({

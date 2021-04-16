@@ -166,11 +166,58 @@ async function handleGetUserPoints (uid) {
   }
 }
 
+async function handleStoreNotifications (uid, notifications) {
+  console.log('handleStoreNotifications', notifications)
+  try {
+    const userRef = firebase.db.collection('notifications').doc(uid)
+    const doc = await userRef.get()
+    const originalNotifications = doc.get('notifications') || []
+    const { exists } = doc
+    if (!exists && originalNotifications) {
+      await userRef.set({ notifications: notifications }, { merge: true })
+      return Promise.resolve(notifications)
+    } else {
+      // Remove old notifications util 20 in array
+      if (originalNotifications.length + notifications.length > 20) {
+        const mergedArray = [...originalNotifications, ...notifications]
+        const saveArray = mergedArray.filter((v, index) => mergedArray.length - 1 - index < 20)
+        await userRef.update({
+          notifications: saveArray
+        })
+        return Promise.resolve(saveArray)
+      } else {
+        await userRef.update({
+          notifications: admin.firestore.FieldValue.arrayUnion(...notifications)
+        })
+        return Promise.resolve([...originalNotifications, ...notifications])
+      }
+    }
+  } catch (error) {
+    console.log(error)
+    return Promise.reject(error)
+  }
+}
+
+async function getNotificationsByUid (uid) {
+  console.log('getNotificationsByUid')
+  try {
+    const userRef = firebase.db.collection('notifications').doc(uid)
+    const doc = await userRef.get()
+    const notifications = await doc.get('notifications') || []
+    return Promise.resolve(notifications)
+  } catch (error) {
+    console.log(error)
+    return Promise.reject(error)
+  }
+}
+
 module.exports = {
   verifyIdToken,
   getUserInfoById,
+  getNotificationsByUid,
   storeEditArticleRecord,
   handleSubscribeArticleById,
   handleAddUserPoints,
-  handleGetUserPoints
+  handleGetUserPoints,
+  handleStoreNotifications
 }

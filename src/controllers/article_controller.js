@@ -352,6 +352,7 @@ module.exports = {
         let checkIfChange = false
         const updateObj = req.body
         updateObj.authors = getUpdatedAuthors(updateObj.authors, newAuthor)
+        updateObj.lastUpdatedAt = Date.now()
         const latestVersionBlocksList = []
         const articleVersion = await Version.findOne({ articleId: article._id })
 
