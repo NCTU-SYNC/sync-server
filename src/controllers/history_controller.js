@@ -128,6 +128,7 @@ module.exports = {
       compareIndex = versionsCount - 1
     }
     console.log(baseIndex, compareIndex)
+    let wordsChanged = {}
     for (const versionIndex of [baseIndex, compareIndex]) {
       const tempContent = []
       const tempViewVersion = versionInstance.versions[versionIndex]
@@ -148,12 +149,16 @@ module.exports = {
         versionIndex: tempViewVersion.versionIndex,
         blocks: tempContent
       })
+      if (versionIndex === baseIndex) {
+        wordsChanged = tempViewVersion.wordsChanged
+      }
     }
 
     const title = versionInstance.versions[versionsCount - 1].title
 
     const doc = {
       articles,
+      wordsChanged: wordsChanged,
       length: versionsCount,
       base: baseIndex + 1,
       compare: compareIndex + 1,
