@@ -149,7 +149,7 @@ module.exports = {
         versionIndex: tempViewVersion.versionIndex,
         blocks: tempContent
       })
-      if (versionIndex === baseIndex) {
+      if (versionIndex === compareIndex) {
         wordsChanged = tempViewVersion.wordsChanged
       }
     }
