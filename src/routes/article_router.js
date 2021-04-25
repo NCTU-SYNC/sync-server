@@ -16,4 +16,7 @@ router.route('/article')
 router.route('/article/:id/authors')
   .get(ctrl.getArticleAuthors)
 
+router.route('/search')
+  .get(ctrl.searchArticles)
+
 module.exports = router

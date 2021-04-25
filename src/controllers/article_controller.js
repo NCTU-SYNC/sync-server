@@ -6,8 +6,11 @@ const Version = require('../models/version')
 const LatestNews = require('../models/latestNews')
 const DiffMatchPatch = require('diff-match-patch')
 const Utils = require('../utils')
+const moment = require('moment')
 
 const mongoose = require('mongoose')
+
+const categories = ['政經', '社會', '環境', '運動', '國際', '科技', '生活']
 
 const isExistedAuthor = (originalAuthors, targetAuthor) => {
   return originalAuthors.some(author => JSON.stringify(author) === JSON.stringify(targetAuthor))
@@ -203,6 +206,89 @@ module.exports = {
             })
           }
         })
+  },
+  searchArticles (req, res, next) {
+    const keyword = req.query.q || ''
+    const checkQueryLimit = Number(req.query.limit)
+    const limit = isNaN(checkQueryLimit) ? 20 : checkQueryLimit
+    const pageNumber = isNaN(Number(req.query.page)) ? 0 : Number(req.query.page)
+    const time = req.query.tbs
+    const category = req.query.category.toString() || ''
+    console.log('searchArticles: ' + keyword + ',' + limit)
+    let searchQuery = {}
+    if (category) {
+      const searchCategoryIndex = categories.indexOf(category)
+      searchQuery = searchCategoryIndex >= 0 ? { category } : {}
+    }
+    let timeQuery = {}
+    switch (time) {
+      case 'qdr:h':
+        timeQuery = {
+          lastUpdatedAt: { $gte: moment().subtract(1, 'hours').toDate() }
+        }
+        break
+      case 'qdr:d':
+        timeQuery = {
+          lastUpdatedAt: { $gte: moment().subtract(1, 'days').toDate() }
+        }
+        break
+      case 'qdr:w':
+        timeQuery = {
+          lastUpdatedAt: { $gte: moment().subtract(1, 'weeks').toDate() }
+        }
+        break
+      case 'qdr:y':
+        timeQuery = {
+          lastUpdatedAt: { $gte: moment().subtract(1, 'years').toDate() }
+        }
+        break
+      default: timeQuery = {}
+        break
+    }
+
+    if (keyword) {
+      Article.find(
+        {
+          ...searchQuery,
+          $or: [
+            {
+              title: {
+                $regex: keyword,
+                $options: 'i'
+              }
+            },
+            {
+              content: {
+                $regex: keyword,
+                $options: 'i'
+              }
+            }
+          ],
+          ...timeQuery
+        }, null, { limit: limit, skip: pageNumber > 0 ? pageNumber * 20 : 0, sort: { _id: -1 } })
+        .exec((err, doc) => {
+          if (err || doc.length === 0) {
+            console.error(err)
+            res.status(200).send({
+              code: 404,
+              type: 'error',
+              message: '查無搜尋結果'
+            })
+          } else {
+            res.json({
+              code: 200,
+              type: 'success',
+              data: doc
+            })
+          }
+        })
+    } else {
+      res.status(500).send({
+        code: 500,
+        type: 'error',
+        message: '搜尋新聞關鍵字輸入有誤，請重新查詢'
+      })
+    }
   },
   getArticleById (req, res, next) {
     console.log('getArticleById: ' + req.params.id)
