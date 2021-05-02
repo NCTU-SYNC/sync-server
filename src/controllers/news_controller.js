@@ -1,7 +1,7 @@
 const News = require('../models/news')
 const moment = require('moment')
 
-const mediaSources = ['中時', '中央社', '華視', '東森', 'ettoday', '台灣事實查核中心', '自由時報', '風傳媒', '聯合']
+const mediaSources = ['中時', '中央社', '華視', '東森', 'ettoday', '台灣事實查核中心', '自由時報', '風傳媒', '聯合', '三立']
 
 module.exports = {
   getNews (req, res, next) {
