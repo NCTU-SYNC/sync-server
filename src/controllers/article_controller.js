@@ -190,9 +190,9 @@ module.exports = {
             for (const latestNews of latestNewsCount) {
               if (i <= 6) {
                 try {
-                  const { category, title, viewsCount, _id } = await Article.findById(latestNews.articleId)
+                  const { category, title, viewsCount, _id, tags, lastUpdatedAt, editedCount, blocks } = await Article.findById(latestNews.articleId)
                   // console.log(await Article.findById(latestNews.articleId))
-                  doc2.push({ category, title, viewsCount, _id })
+                  doc2.push({ category, title, viewsCount, _id, tags, lastUpdatedAt, editedCount, blocks })
                 } catch (error) {
                   console.log(error)
                 }
@@ -214,7 +214,7 @@ module.exports = {
     const pageNumber = isNaN(Number(req.query.page)) ? 0 : Number(req.query.page)
     const time = req.query.tbs
     const category = req.query.category.toString() || ''
-    console.log('searchArticles: ' + keyword + ',' + limit)
+    console.log('searchArticles: ' + keyword + ',' + limit + ',' + category)
     let searchQuery = {}
     if (category) {
       const searchCategoryIndex = categories.indexOf(category)
@@ -275,6 +275,28 @@ module.exports = {
               message: '查無搜尋結果'
             })
           } else {
+            res.json({
+              code: 200,
+              type: 'success',
+              data: doc
+            })
+          }
+        })
+    } else if (category) {
+      Article.find(
+        {
+          ...searchQuery
+        }, null, { limit: limit, skip: pageNumber > 0 ? pageNumber * 20 : 0, sort: { _id: -1 } })
+        .exec((err, doc) => {
+          if (err || doc.length === 0) {
+            console.error(err)
+            res.status(200).send({
+              code: 404,
+              type: 'error',
+              message: '查無搜尋結果'
+            })
+          } else {
+            console.log(doc)
             res.json({
               code: 200,
               type: 'success',
