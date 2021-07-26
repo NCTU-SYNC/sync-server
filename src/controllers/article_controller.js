@@ -143,14 +143,14 @@ async function compareArticleByWord (blocks1, blocks2) {
     }
     for (const contentElement of contentDiff) {
       if (contentElement[0] === 1) {
-        deletedWordCount += contentElement[1].length
+        deletedWordCount += contentElement[1].length / 2
+        console.log('del2')
+        console.log(contentElement[1])
       } else if (contentElement[0] === -1) {
-        addedWordCount += contentElement[1].length
+        addedWordCount += contentElement[1].length / 2
       }
     }
   }
-  addedWordCount = addedWordCount / 2
-  deletedWordCount = deletedWordCount / 2
   console.log({ addedWordCount, deletedWordCount })
   return { addedWordCount, deletedWordCount }
 }
