@@ -4,6 +4,28 @@ const moment = require('moment')
 const mediaSources = ['中時', '中央社', '華視', '東森', 'ettoday', '台灣事實查核中心', '自由時報', '風傳媒', '聯合', '三立']
 
 module.exports = {
+  getLatestNews (req, res) {
+    let limit = 50
+    if (Object.prototype.hasOwnProperty.call(req.query, 'limit')) {
+      limit = isNaN(Number(req.query.limit)) ? 50 : Number(req.query.limit)
+    }
+    News.find({}, null, { sort: { modified_date: -1 } }).limit(limit)
+      .exec((err, doc) => {
+        if (err) {
+          res.status(500).send({
+            code: 500,
+            type: 'error',
+            message: '搜尋發生錯誤，請重新查詢'
+          })
+        } else {
+          res.json({
+            code: 200,
+            type: 'success',
+            data: doc
+          })
+        }
+      })
+  },
   getNews (req, res, next) {
     const keyword = req.query.q || ''
     const checkQueryLimit = Number(req.query.limit)
