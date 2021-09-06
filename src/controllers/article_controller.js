@@ -596,6 +596,20 @@ module.exports = {
               checkIfChange = true
             }
           }
+          for (const block of detectArticle.blocks) {
+            let blockDeleted = true
+            for (const compareblock of updateObj.blocks) {
+              if (block._id.toString() === compareblock._id.toString()) {
+                blockDeleted = false
+                break
+              }
+            }
+            if (blockDeleted) {
+              console.log('block has been deleted')
+              checkIfChange = true
+              break
+            }
+          }
         }
 
         console.log(`The article has ${checkIfChange ? '' : 'not'} changed`)
