@@ -95,7 +95,7 @@ async function compareArticleByWord (blocks1, blocks2) {
     // 確認有blockId
     if (block._id) {
       // 若比較的版本有插入新段落，則在 order 陣列新增，待會則照順序查看陣列
-      if (!diffOrderArr.includes(String(block._id))) {
+      if (!diffOrderArr.includes(block._id.toString())) {
         diffOrderArr.splice(i, 0, block._id)
       }
       // 確認字典裡面尚無 blockId
