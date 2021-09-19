@@ -90,13 +90,12 @@ async function compareArticleByWord (blocks1, blocks2) {
       }
     }
   }
-
   let i = 0
   for (const block of blocks2.blocks) {
     // 確認有blockId
     if (block._id) {
       // 若比較的版本有插入新段落，則在 order 陣列新增，待會則照順序查看陣列
-      if (!diffOrderArr.includes(block._id)) {
+      if (!diffOrderArr.includes(block._id.toString())) {
         diffOrderArr.splice(i, 0, block._id)
       }
       // 確認字典裡面尚無 blockId
@@ -123,7 +122,7 @@ async function compareArticleByWord (blocks1, blocks2) {
   for (const blockId of diffOrderArr) {
     const empty = {
       title: '',
-      text: ''
+      text: '\n\n'
     }
     // 設定 base，若無 base 則給予空物件比對
     const base = diffDict[blockId] ? diffDict[blockId].base ? diffDict[blockId].base : empty : empty
@@ -143,11 +142,9 @@ async function compareArticleByWord (blocks1, blocks2) {
     }
     for (const contentElement of contentDiff) {
       if (contentElement[0] === 1) {
-        deletedWordCount += contentElement[1].length / 2
-        console.log('del2')
-        console.log(contentElement[1])
+        deletedWordCount += contentElement[1].length
       } else if (contentElement[0] === -1) {
-        addedWordCount += contentElement[1].length / 2
+        addedWordCount += contentElement[1].length
       }
     }
   }
