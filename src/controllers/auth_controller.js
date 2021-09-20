@@ -99,16 +99,9 @@ const auth = {
             viewed: [articleId]
           }, { merge: true })
       } else {
-        const subscribedList = doc.get('subscribed') || []
-        const articleIndex = subscribedList.findIndex(s => s.articleId === articleId)
-        if (articleIndex >= 0) {
-          subscribedList[articleIndex].timeStamp = admin.firestore.Timestamp.now()
-
-          userRef.update({
-            viewed: admin.firestore.FieldValue.arrayUnion(articleId),
-            subscribed: subscribedList
-          })
-        }
+        userRef.update({
+          viewed: admin.firestore.FieldValue.arrayUnion(articleId)
+        })
       }
 
       res.json({
