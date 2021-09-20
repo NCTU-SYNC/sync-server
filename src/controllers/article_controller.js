@@ -570,7 +570,7 @@ module.exports = {
             }
           }
         }
-
+        let onlyTagChange = false
         // 確認是否有變更標題或是引用
         if (!checkIfChange) {
           console.log('The content has not change in article, detect other changes')
@@ -610,10 +610,10 @@ module.exports = {
           }
           // 確認tag是否被改動
           if (JSON.stringify(detectArticle.tags) !== JSON.stringify(updateObj.tags)) {
-            checkIfChange = true
+            onlyTagChange = true
           }
         }
-
+        console.log(onlyTagChange)
         console.log(`The article has ${checkIfChange ? '' : 'not'} changed`)
         if (checkIfChange) {
           const oldArticle = await Article.findOne({ _id: id })
@@ -672,6 +672,27 @@ module.exports = {
             Utils.article.updateArticleEditedCount(id)
             Utils.firebase.storeEditArticleRecord(uid, id)
             Utils.firebase.handleAddUserPoints(uid, 2)
+          })
+        } else if (onlyTagChange) {
+          Article.findOneAndUpdate({ _id: id }, updateObj, { new: true, upsert: true }, (err, doc) => {
+            if (err) {
+              res.status(200).send({
+                code: 500,
+                type: 'error',
+                message: '更新文章時發生錯誤'
+              })
+              return
+            }
+            res.json({
+              code: 200,
+              type: 'success',
+              data: doc,
+              message: '已成功更新文章'
+            })
+            // console.log(Utils.article)
+            // Utils.article.updateArticleEditedCount(id)
+            // Utils.firebase.storeEditArticleRecord(uid, id)
+            // Utils.firebase.handleAddUserPoints(uid, 2)
           })
         } else {
           res.status(200).send({
