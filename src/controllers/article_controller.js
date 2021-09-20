@@ -593,6 +593,7 @@ module.exports = {
               checkIfChange = true
             }
           }
+          // 確認是否有block被刪除
           for (const block of detectArticle.blocks) {
             let blockDeleted = true
             for (const compareblock of updateObj.blocks) {
@@ -606,6 +607,10 @@ module.exports = {
               checkIfChange = true
               break
             }
+          }
+          // 確認tag是否被改動
+          if (JSON.stringify(detectArticle.tags) !== JSON.stringify(updateObj.tags)) {
+            checkIfChange = true
           }
         }
 
