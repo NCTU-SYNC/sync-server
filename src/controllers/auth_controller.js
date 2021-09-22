@@ -2,6 +2,8 @@ const firebase = require('../lib/firebase')
 const admin = require('firebase-admin')
 const Article = require('../models/article')
 const Utils = require('../utils')
+// require mongoose for casting string into ObjectId
+const mongoose = require('mongoose')
 
 const auth = {
   async login (req, res, next) {
@@ -195,12 +197,49 @@ async function getArticlesInfo (req, res) {
 
 async function handleGetArticlesByArray (articleIds) {
   try {
-    const doc = await Article.find({ _id: articleIds })
+    // deprecated
+    // const doc = await Article.find({ _id: { $in: articleIds } })
+
+    // if articleIds is empty, the braches in switch in pipeline will be empty,
+    // which cause error
+    const doc = articleIds.length > 0 ? await Article.aggregate(handleBuildPipeline(articleIds)) : []
     return Promise.resolve(doc)
   } catch (error) {
     console.log(error)
     return Promise.reject(error)
   }
+}
+
+/**
+ * this pipeline is aimed to fetch articles from db
+ * while keep the order in array(articleIds)
+ * @param articleIds
+ * @returns built pipeline
+ */
+function handleBuildPipeline (articleIds) {
+  const switchCond = {
+    $switch: {
+      branches: []
+    }
+  }
+
+  // cast to ObjectId type first and set weight by its indexes
+  articleIds.map(e => mongoose.Types.ObjectId(e)).forEach((id, index) => {
+    switchCond.$switch.branches.push({
+      case: { $eq: ['$_id', id] },
+      then: index
+    })
+  })
+
+  // match all the articles by ids,
+  // add _weight field
+  // sort it by _weight
+  const pipeline = [
+    { $match: { _id: { $in: articleIds.map(e => mongoose.Types.ObjectId(e)) } } },
+    { $addFields: { _weight: switchCond } },
+    { $sort: { _weight: 1 } }
+  ]
+  return pipeline
 }
 
 module.exports = auth
