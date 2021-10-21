@@ -6,10 +6,10 @@ const Version = require('../models/version')
 const LatestNews = require('../models/latestNews')
 const DiffMatchPatch = require('diff-match-patch')
 const Utils = require('../utils')
+const { MODE } = require('../utils/constant')
 const moment = require('moment')
-
+const mockController = require('../mock')
 const mongoose = require('mongoose')
-
 const categories = ['政經', '社會', '環境', '運動', '國際', '科技', '生活']
 
 const isExistedAuthor = (originalAuthors, targetAuthor) => {
@@ -154,6 +154,12 @@ async function compareArticleByWord (blocks1, blocks2) {
 
 module.exports = {
   getArticles (req, res, next) {
+    if (req.query.mode === MODE.DEBUG) {
+      console.log('[Mock][Articles] use mock data')
+      mockController.mockArticles(req, res)
+      return
+    }
+
     const keyword = req.query.q || ''
     const limit = Number(req.query.limit)
     console.log('getArticles: ' + keyword + ',' + limit)
