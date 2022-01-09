@@ -88,6 +88,34 @@ const auth = {
       })
     }
   },
+  async updatePref (req, res) {
+    console.log('auth/updateProfile')
+    const { token, payload } = req.body
+    try {
+      const { uid } = await Utils.firebase.verifyIdToken(token)
+      const userRef = firebase.db.collection('preferences').doc(uid)
+      const doc = await userRef.get();
+      if (!payload.hasOwnProperty('preferences')) {
+        throw new Error('No preferences found in payload')
+      }
+      if (!doc.exists) {
+        userRef.set(payload.preferences, { merge: true })
+      }
+      await userRef.update(payload.preferences, { merge: true })
+      res.json({
+        code: 200,
+        type: 'success',
+        message: '已成功更新偏好設定'
+      })
+    } catch (error) {
+      console.log(error)
+      res.status(500).send({
+        code: 500,
+        type: 'error',
+        data: error
+      })
+    }
+  },
   async updateViewArticleToFirestore (req, res) {
     console.log('auth/updateViewArticleToFirestore')
     const { token, articleId } = req.body

@@ -7,6 +7,9 @@ router.route('/login')
 router.route('/profile')
   .post(ctrl.getProfileById)
 
+router.route('/profile/update/pref')
+  .post(ctrl.updatePref)
+
 router.route('/profile/view')
   .post(ctrl.updateViewArticleToFirestore)
 
