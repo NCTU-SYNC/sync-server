@@ -7,6 +7,9 @@ router.route('/login')
 router.route('/profile')
   .post(ctrl.getProfileById)
 
+router.route('/profile/pref')
+  .post(ctrl.getPref)
+
 router.route('/profile/update/pref')
   .post(ctrl.updatePref)
 

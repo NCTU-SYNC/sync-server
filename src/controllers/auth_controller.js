@@ -88,6 +88,35 @@ const auth = {
       })
     }
   },
+  async getPref (req, res) {
+    console.log('auth/getPref')
+    const token = req.body.token
+    try {
+      const { uid } = await Utils.firebase.verifyIdToken(token)
+      const userRef = firebase.db.collection('preferences').doc(uid)
+      const doc = await userRef.get()
+      if (doc.exists) {
+        res.json({
+          code: 200,
+          type: 'success',
+          data: doc.data()
+        })
+      } else {
+        res.json({
+          code: 200,
+          type: 'success',
+          data: {}
+        })
+      }
+    } catch (error) {
+      console.log(error)
+      res.status(500).send({
+        code: 500,
+        type: 'error',
+        data: error
+      })
+    }
+  },
   async updatePref (req, res) {
     console.log('auth/updateProfile')
     const { token, payload } = req.body
