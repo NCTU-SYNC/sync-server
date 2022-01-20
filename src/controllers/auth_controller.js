@@ -2,6 +2,7 @@ const firebase = require('../lib/firebase')
 const admin = require('firebase-admin')
 const Article = require('../models/article')
 const Utils = require('../utils')
+const moment = require('moment')
 // require mongoose for casting string into ObjectId
 const mongoose = require('mongoose')
 
@@ -11,11 +12,14 @@ const auth = {
       const token = req.body.idToken
       const { uid } = await Utils.firebase.verifyIdToken(token)
       console.log('login uid: ' + uid)
-      firebase.db.collection('users').doc(uid).set(req.body, { merge: true })
+      const userRef = firebase.db.collection('users').doc(uid)
+      userRef.set(req.body, { merge: true })
+      const doc = await userRef.get()
       res.status(200).send({
         code: 200,
         type: 'success',
-        message: '已成功登入'
+        message: '已成功登入',
+        data: { nameModTime: doc.data()["nameModTime"] }
       })
     } catch (error) {
       console.log(error)
@@ -88,12 +92,47 @@ const auth = {
       })
     }
   },
+  async updateNameModTime(req, res) {
+    console.log('auth/getNameModTime')
+    const token = req.body.token
+    try {
+      const { uid } = await Utils.firebase.verifyIdToken(token)
+      const userRef = firebase.db.collection('users').doc(uid)
+      const doc = await userRef.get()
+      const data = doc.data()
+      // append current time to nameModTime array
+      const time = [
+        // if nameModTime is not exist, set it to []
+        ...(data.hasOwnProperty("nameModTime") ? data.nameModTime : []), 
+        moment()
+      ].slice(-2)
+      if (!doc.exists) {
+        throw new Error('No user found')
+      }
+      await userRef.update({
+        nameModTime: time,
+      }, { merge: true })
+
+      res.json({
+        code: 200,
+        type: 'success',
+        data: time
+      })
+    } catch (error) {
+      console.log(error)
+      res.status(500).send({
+        code: 500,
+        type: 'error',
+        data: error
+      })
+    }
+  },
   async getPref (req, res) {
     console.log('auth/getPref')
     const token = req.body.token
     try {
       const { uid } = await Utils.firebase.verifyIdToken(token)
-      const userRef = firebase.db.collection('preferences').doc(uid)
+      const userRef = firebase.db.collection('users').doc(uid)
       const doc = await userRef.get()
       if (doc.exists) {
         res.json({
