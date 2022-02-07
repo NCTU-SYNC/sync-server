@@ -13,6 +13,9 @@ const blockSchema = new mongoose.Schema({
     type: Date,
     required: true
   },
+  timeEnable: {
+    type: Boolean
+  },
   content: {
     type: Object
   },
