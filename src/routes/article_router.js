@@ -19,4 +19,13 @@ router.route('/article/:id/authors')
 router.route('/search')
   .get(ctrl.searchArticles)
 
+router.route("/article/:id/authorsImg")
+  .get(ctrl.getArticleAuthorsImg);
+
+router.route("/article/putDeleteArticle")
+  .put(ctrl.putDeleteArticleById);  // req.body--> { "id":article_id}
+
+router.route("/article/deleteArticle")
+  .delete(ctrl.deleteArticleById);  // req.body--> { "id":article_id}
+
 module.exports = router

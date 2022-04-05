@@ -12,6 +12,12 @@ const mockController = require('../mock')
 const mongoose = require('mongoose')
 const categories = ['政經', '社會', '環境', '運動', '國際', '科技', '生活']
 
+const Redis = require("redis")
+
+const redisClient = Redis.createClient()
+const DEFAULT_EXPIRATION=3600 
+
+
 const isExistedAuthor = (originalAuthors, targetAuthor) => {
   return originalAuthors.some(author => JSON.stringify(author) === JSON.stringify(targetAuthor))
 }
@@ -752,5 +758,150 @@ module.exports = {
       type: 'success',
       data: doc
     })
+  },
+  async getArticleAuthorsImg(req, res, next) {
+    console.log("article/getArticleAuthors.....");
+    try {
+      const articleId = req.params.id;
+
+      const authorsData=await getOrSetCache(`ArticleId:${articleId}_AuthorsImg`,async()=>{
+        const doc = await Article.findById(articleId).exec();
+        const authors = [];
+        for (const author of doc.authors) {
+          const { displayName,photoURL,email } = await Utils.firebase.getUserInfoById(
+            author.uid
+          );
+          authors.push({ uid:author.uid, displayName:displayName, photoURL:photoURL,email:email,isAnomynous:author.isAnonymous });
+        }
+        return authors
+      })
+
+      res.status(200).send({
+        code: 200,
+        type: "success",
+        data: authorsData,
+        message: "已成功抓取作者",
+      });
+    } catch (error) {
+      console.log(error);
+    }
+  },
+  async putDeleteArticleById(req, res, next) {
+    try {
+      const { id } = req.body;
+      let deletedArticle = await Article.findById(id);
+      if (deletedArticle === undefined) {
+        return res.status(200).send({
+          code: 500,
+          type: "error",
+          message: "文章的ID輸入有誤，請重新查詢",
+        });
+      }
+
+      //刪除  ../models/article.js    的  articleSchema  // 還有  blockSchema    (增加刪除標記)
+      deletedArticle.blocks.forEach((block, index) => {
+        if (block.blockDateTime == null) {
+          console.log(
+            "blockDateTime bug  就算沒有打blockDatetime 也可以發布新block"
+          );
+          block.blockDateTime = Date.now(); //default 把 block date time設定為現在
+        }
+        block.isdeleted = true;
+      });
+      deletedArticle.isdeleted = true;
+
+      await deletedArticle.save();
+
+      const allArticleblocks = await Block.find({ articleId: id });
+
+      //刪除    ../models/block.js    的blockSchema   //  還有  block 裡面的 revision schema
+      allArticleblocks.forEach(async (block, blockIndex) => {
+        block.isdeleted = true;
+        block.revisions.forEach(async (rev, revIndex) => {
+          rev.isdeleted = true;
+        });
+        await block.save();
+      });
+      //刪除../models/content.js 的 content schema
+      const allContents = await Content.find({ articleId: id });
+      allContents.forEach(async (content, contentIndex) => {
+        content.isdeleted = true;
+        await content.save();
+      });
+      //latestNews
+      const allLatest = await LatestNews.find({ articleId: id });
+      allLatest.forEach(async (latest, Index) => {
+        latest.isdeleted = true;
+        await latest.save();
+      });
+
+      //version
+      const allVersion = await Version.find({ articleId: id });
+      console.log(allVersion, " allv");
+      allVersion.forEach(async (ver, verIndex) => {
+        ver.versions.forEach((v2, v2Index) => {
+          v2.blocks.forEach((v3, v3Index) => {
+            console.log(v3, `  v33 ${v3Index}`);
+            v3.isdeleted = true;
+          });
+          v2.isdeleted = true;
+        });
+        ver.isdeleted = true;
+        await ver.save();
+      });
+      return res.status(200).send({
+        test: "軟刪除成功",
+      });
+    } catch (error) {
+      console.log(error);
+      res.status(200).send({
+        code: 500,
+        type: "error",
+        message: error.message,
+      });
+    }
+  },
+  async deleteArticleById(req, res, next) {
+    try {
+      const { id } = req.body;
+      const deleteTime = Date.now();
+      let article=await Article.findOne({_id:id})
+      await Article.deleteOne({_id:id});
+      
+      await Block.deleteMany({ articleId: id });
+      await Content.deleteMany({ articleId: id });
+      await LatestNews.deleteMany({ articleId: id });
+      await Version.deleteMany({ articleId: id });
+      
+      return res.status(200).send({
+        test: `硬刪除成功 articleid: ${id} ${article.title}`,
+      });
+    } catch (error) {
+      console.log(error);
+      res.status(200).send({
+        code: 500,
+        type: "error",
+        message: error.message,
+      });
+    }
   }
+}
+
+
+function getOrSetCache(key,cb){
+  return new Promise((resolve,reject)=>{
+      redisClient.get(key,async(error,data)=>{
+          if(error){
+              return reject(error)
+          }
+          if(data!=null){
+              console.log('Cache Hit')
+              return resolve(JSON.parse(data))
+          }
+          console.log('Cache Miss')
+          const freshData=await cb()
+          redisClient.setex(key,DEFAULT_EXPIRATION,JSON.stringify(freshData))
+          resolve(freshData)
+      })
+  })
 }

@@ -12,7 +12,11 @@ const contentSchema = new mongoose.Schema({
   },
   content: {
     type: Object
-  }
+  },
+  isdeleted: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const content = mongoose.model('Content', contentSchema, 'Content')

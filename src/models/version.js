@@ -18,7 +18,11 @@ const blockSchema = new mongoose.Schema({
   revisionIndex: {
     type: Number,
     required: true
-  }
+  },
+  isdeleted: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const versionSchema = new mongoose.Schema({
@@ -55,7 +59,11 @@ const versionSchema = new mongoose.Schema({
         default: 0
       }
     }
-  }]
+  }],
+  isdeleted: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const version = mongoose.model('Version', versionSchema, 'Versions')

@@ -10,7 +10,11 @@ const latestNewsSchema = new mongoose.Schema({
   updatedAt: {
     type: Date,
     default: Date.now
-  }
+  },
+  isdeleted: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const latestNews = mongoose.model('latestNews', latestNewsSchema, 'latestNews')
