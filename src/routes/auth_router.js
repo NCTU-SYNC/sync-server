@@ -16,4 +16,7 @@ router.route('/profile/subscribe')
 router.route('/profile/article')
   .post(ctrl.getArticlesInfo)
 
+router.route('/profile/manyUsersInfo')
+  .post(ctrl.getManyUsersInfo)         //req.body  -->>  { "uids":["l18gziuFDxdmaJKdPwdQMeRIOvX2","WmPqnkHg9QfQ7NCuCh3WAV4cenN2","V1t2lp0nHYWrtREtLkCaLVHXMhx2"]}
+
 module.exports = router

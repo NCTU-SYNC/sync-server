@@ -192,22 +192,22 @@ module.exports = {
               message: '查無搜尋結果'
             })
           } else {
-            const latestNewsCount = await LatestNews.find({}).sort({ _id: -1 })
-            console.log(latestNewsCount)
+            // const latestNewsCount = await LatestNews.find({}).sort({ _id: -1 })
+            // console.log(latestNewsCount)
             const doc2 = []
-            var i = 0
-            for (const latestNews of latestNewsCount) {
-              if (i <= 6) {
-                try {
-                  const { category, title, viewsCount, _id, tags, lastUpdatedAt, editedCount, blocks } = await Article.findById(latestNews.articleId)
-                  // console.log(await Article.findById(latestNews.articleId))
-                  doc2.push({ category, title, viewsCount, _id, tags, lastUpdatedAt, editedCount, blocks })
-                } catch (error) {
-                  console.log(error)
-                }
-              }
-              i += 1
-            }
+            // var i = 0
+            // for (const latestNews of latestNewsCount) {
+            //   if (i <= 6) {
+            //     try {
+            //       const { category, title, viewsCount, _id, tags, lastUpdatedAt, editedCount, blocks } = await Article.findById(latestNews.articleId)
+            //       // console.log(await Article.findById(latestNews.articleId))
+            //       doc2.push({ category, title, viewsCount, _id, tags, lastUpdatedAt, editedCount, blocks })
+            //     } catch (error) {
+            //       console.log(error)
+            //     }
+            //   }
+            //   i += 1
+            // }
             res.json({
               code: 200,
               type: 'success',
@@ -215,6 +215,97 @@ module.exports = {
             })
           }
         })
+  },
+  async getPopularArticle(req, res, next) {
+    console.log("getting Popular articles");
+    if (req.query.mode === MODE.DEBUG) {
+      console.log("[Mock][Articles] use mock data");
+      mockController.mockArticles(req, res);
+      return;
+    }
+    if (req.query.limit==undefined){
+        req.query.limit=6;   ///default value
+        console.log(`default limit value : ${req.query.limit}`)
+    }
+    console.log(req.query.limit,"  limit")
+    const keyword = req.query.q || "";
+    
+    const limit = Number(req.query.limit);
+    console.log("getArticles: " + keyword + "," + limit," .......");
+    Article.find(
+      {
+        $or: [
+          {
+            title: {
+              $regex: keyword,
+              $options: "i",
+            },
+          },
+          {
+            outline: {
+              $regex: keyword,
+              $options: "i",
+            },
+          },
+        ],
+      },
+      null,
+      { limit: limit, sort: { viewsCount: -1 } }
+    ).exec(async (err, doc) => {
+      if (err || doc.length === 0) {
+        res.status(200).send({
+          code: 404,
+          type: "success",
+          message: "查無搜尋結果",
+        });
+      } else {
+        for(let i=0;i<doc.length;i++){
+          console.log(i,doc[i].title,doc[i]._id,doc[i].viewsCount)
+        }
+        res.json({
+          code: 200,
+          type: "success",
+          data: [doc],
+        });
+      }
+    });
+  },
+  async getArticlesOthers(req, res, next) {
+    console.log("getting Popular articles");
+    if (req.query.mode === MODE.DEBUG) {
+      console.log("[Mock][Articles] use mock data");
+      mockController.mockArticles(req, res);
+      return;
+    }
+    if (req.query.limit==undefined){
+        req.query.limit=6;   ///default value
+        console.log(`default limit value : ${req.query.limit}`)
+    }
+    console.log(req.query.limit,"  limit")
+    const keyword = req.query.q || "";
+    
+    const limit = Number(req.query.limit);
+    console.log("getArticles: " + keyword + "," + limit," .......");
+    Article.aggregate(
+      [{ $sample: { size: 6 } }]
+      ).exec(async (err, doc) => {
+      if (err || doc.length === 0) {
+        res.status(200).send({
+          code: 404,
+          type: "success",
+          message: "查無搜尋結果",
+        });
+      } else {
+        for(let i=0;i<doc.length;i++){
+          console.log(i,doc[i].title,doc[i]._id,doc[i].viewsCount,"random")
+        }
+        res.json({
+          code: 200,
+          type: "success",
+          data: [doc],
+        });
+      }
+    });
   },
   searchArticles (req, res, next) {
     const keyword = req.query.q || ''
@@ -742,23 +833,23 @@ module.exports = {
       console.log(error)
     }
   },
-  async getPopularArticle (req, res, next) {
-    const latestNewsCount = await LatestNews.find({}).sort({ _id: -1 })
-    const doc = []
-    var i = 0
-    for (const latestNews of latestNewsCount) {
-      if (i <= 6) {
-        const { category, title, viewsCount } = Article.findById(latestNews.articleId)
-        doc.push({ category, title, viewsCount })
-      }
-      i += 1
-    }
-    res.status(200).send({
-      code: 200,
-      type: 'success',
-      data: doc
-    })
-  },
+  // async getPopularArticle (req, res, next) {
+  //   const latestNewsCount = await LatestNews.find({}).sort({ _id: -1 })
+  //   const doc = []
+  //   var i = 0
+  //   for (const latestNews of latestNewsCount) {
+  //     if (i <= 6) {
+  //       const { category, title, viewsCount } = Article.findById(latestNews.articleId)
+  //       doc.push({ category, title, viewsCount })
+  //     }
+  //     i += 1
+  //   }
+  //   res.status(200).send({
+  //     code: 200,
+  //     type: 'success',
+  //     data: doc
+  //   })
+  // },
   async getArticleAuthorsImg(req, res, next) {
     console.log("article/getArticleAuthors.....");
     try {
