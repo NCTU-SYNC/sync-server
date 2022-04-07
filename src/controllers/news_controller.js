@@ -27,9 +27,10 @@ module.exports = {
       })
   },
   getNews (req, res, next) {
+    console.log("/news_controller/getNews")
     const keyword = req.query.q || ''
     const checkQueryLimit = Number(req.query.limit)
-    const limit = isNaN(checkQueryLimit) ? 20 : checkQueryLimit
+    const limit = isNaN(checkQueryLimit) ? 3 : checkQueryLimit
     const pageNumber = isNaN(Number(req.query.page)) ? 0 : Number(req.query.page)
     const time = req.query.tbs
     const media = req.query.media.toString() || ''
@@ -39,6 +40,7 @@ module.exports = {
       searchQuery = searchMediaIndex >= 0 ? { media } : {}
     }
     let timeQuery = {}
+    console.log(keyword,"limit:",limit,"page",pageNumber,"time:",time,media)
     switch (time) {
       case 'qdr:h':
         timeQuery = {
@@ -62,8 +64,7 @@ module.exports = {
         break
       default: timeQuery = {}
         break
-    }
-
+    }   
     if (keyword) {
       News.find(
         {
@@ -83,7 +84,7 @@ module.exports = {
             }
           ],
           ...timeQuery
-        }, null, { limit: limit, skip: pageNumber > 0 ? pageNumber * 20 : 0, sort: { _id: -1 } })
+        }, null, { limit: limit, skip: pageNumber > 0 ? pageNumber * limit : 0, sort: { _id: -1 } })
         .exec((err, doc) => {
           if (err || doc.length === 0) {
             console.error(err)
