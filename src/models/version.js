@@ -21,8 +21,8 @@ const blockSchema = new mongoose.Schema({
   },
   isdeleted: {
     type: Boolean,
-    default: false,
-  },
+    default: false
+  }
 })
 
 const versionSchema = new mongoose.Schema({
@@ -62,8 +62,8 @@ const versionSchema = new mongoose.Schema({
   }],
   isdeleted: {
     type: Boolean,
-    default: false,
-  },
+    default: false
+  }
 })
 
 const version = mongoose.model('Version', versionSchema, 'Versions')

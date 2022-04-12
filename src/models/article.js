@@ -22,8 +22,8 @@ const blockSchema = new mongoose.Schema({
   },
   isdeleted: {
     type: Boolean,
-    default: false,
-  },
+    default: false
+  }
 })
 
 const articleSchema = new mongoose.Schema({
@@ -72,8 +72,8 @@ const articleSchema = new mongoose.Schema({
   blocks: [blockSchema],
   isdeleted: {
     type: Boolean,
-    default: false,
-  },
+    default: false
+  }
 })
 
 const article = mongoose.model('Article', articleSchema, 'Articles')

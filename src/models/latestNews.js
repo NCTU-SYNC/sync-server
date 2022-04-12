@@ -13,8 +13,8 @@ const latestNewsSchema = new mongoose.Schema({
   },
   isdeleted: {
     type: Boolean,
-    default: false,
-  },
+    default: false
+  }
 })
 
 const latestNews = mongoose.model('latestNews', latestNewsSchema, 'latestNews')

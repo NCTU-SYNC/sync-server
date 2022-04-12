@@ -25,8 +25,8 @@ const revisionSchema = new mongoose.Schema({
   },
   isdeleted: {
     type: Boolean,
-    default: false,
-  },
+    default: false
+  }
 })
 
 const blockSchema = new mongoose.Schema({
@@ -45,8 +45,8 @@ const blockSchema = new mongoose.Schema({
   revisions: [revisionSchema],
   isdeleted: {
     type: Boolean,
-    default: false,
-  },
+    default: false
+  }
 })
 
 const block = mongoose.model('Block', blockSchema, 'Blocks')

@@ -144,15 +144,15 @@ const auth = {
     }
   },
   getArticlesInfo,
-  async getManyUsersInfo(req,res){
+  async getManyUsersInfo (req, res) {
     try {
-      let {uids}=req.body
-      let userinfo=[]
-      for(let i=0;i<uids.length;i++){
-        let uid=uids[i]
-        const { displayName,photoURL,email } = await Utils.firebase.getUserInfoById(
+      const { uids } = req.body
+      const userinfo = []
+      for (let i = 0; i < uids.length; i++) {
+        const uid = uids[i]
+        const { displayName } = await Utils.firebase.getUserInfoById(
           uid
-        );
+        )
         const userRef = firebase.db.collection('articles').doc(uid)
         const points = await Utils.firebase.handleGetUserPoints(uid)
         const doc = await userRef.get()
@@ -166,13 +166,13 @@ const auth = {
         // for(let j=0;jh)
         const q = handleGetArticlesByArray
         const result = await Promise.all([q(editedArticleIds), q(viewedArticleIds), q(subscribedArticleIds)])
-        console.log(result[0].length,result[1].length,result[2].length,"000000000")
-        console.log(editedArticleIds.length,viewedArticleIds.length,subscribedArticleIds.length)
-        result[0].forEach((e,i)=>{
-          console.log(e.title,":....")
+        console.log(result[0].length, result[1].length, result[2].length, '000000000')
+        console.log(editedArticleIds.length, viewedArticleIds.length, subscribedArticleIds.length)
+        result[0].forEach((e, i) => {
+          console.log(e.title, ':....')
         })
         userinfo.push({
-          displayName:displayName,
+          displayName: displayName,
           edited: result[0],
           viewed: result[1],
           subscribed: result[2],

@@ -15,8 +15,8 @@ const contentSchema = new mongoose.Schema({
   },
   isdeleted: {
     type: Boolean,
-    default: false,
-  },
+    default: false
+  }
 })
 
 const content = mongoose.model('Content', contentSchema, 'Content')
