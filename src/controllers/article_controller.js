@@ -12,10 +12,10 @@ const mockController = require('../mock')
 const mongoose = require('mongoose')
 const categories = ['政經', '社會', '環境', '運動', '國際', '科技', '生活']
 
-const Redis = require('redis')
+// const Redis = require('redis')
 
-const redisClient = Redis.createClient()
-const DEFAULT_EXPIRATION = 3600
+// const redisClient = Redis.createClient()
+// const DEFAULT_EXPIRATION = 3600
 
 const isExistedAuthor = (originalAuthors, targetAuthor) => {
   return originalAuthors.some(author => JSON.stringify(author) === JSON.stringify(targetAuthor))
@@ -975,20 +975,22 @@ module.exports = {
   }
 }
 
-function getOrSetCache (key, cb) {
-  return new Promise((resolve, reject) => {
-    redisClient.get(key, async (error, data) => {
-      if (error) {
-        return reject(error)
-      }
-      if (data != null) {
-        console.log('Cache Hit')
-        return resolve(JSON.parse(data))
-      }
-      console.log('Cache Miss')
-      const freshData = await cb()
-      redisClient.setex(key, DEFAULT_EXPIRATION, JSON.stringify(freshData))
-      resolve(freshData)
-    })
-  })
+async function getOrSetCache (key, cb) {
+  const freshData = await cb()
+  return freshData
+  // return new Promise((resolve, reject) => {
+  //   redisClient.get(key, async (error, data) => {
+  //     if (error) {
+  //       return reject(error)
+  //     }
+  //     if (data != null) {
+  //       console.log('Cache Hit')
+  //       return resolve(JSON.parse(data))
+  //     }
+  //     console.log('Cache Miss')
+  //     const freshData = await cb()
+  //     redisClient.setex(key, DEFAULT_EXPIRATION, JSON.stringify(freshData))
+  //     resolve(freshData)
+  //   })
+  // })
 }
