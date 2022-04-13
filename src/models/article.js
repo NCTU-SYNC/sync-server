@@ -11,7 +11,7 @@ const blockSchema = new mongoose.Schema({
   },
   blockDateTime: {
     type: Date,
-    required: false
+    required: true
   },
   content: {
     type: Object
