@@ -1,33 +1,11 @@
 const News = require('../models/news')
 const moment = require('moment')
-
+const Elastic = require('../lib/elasticSearch')
 const mediaSources = ['中時', '中央社', '華視', '東森', 'ettoday', '台灣事實查核中心', '自由時報', '風傳媒', '聯合', '三立']
 
 module.exports = {
-  getLatestNews (req, res) {
-    let limit = 50
-    if (Object.prototype.hasOwnProperty.call(req.query, 'limit')) {
-      limit = isNaN(Number(req.query.limit)) ? 50 : Number(req.query.limit)
-    }
-    News.find({}, null, { sort: { modified_date: -1 } }).limit(limit)
-      .exec((err, doc) => {
-        if (err) {
-          res.status(500).send({
-            code: 500,
-            type: 'error',
-            message: '搜尋發生錯誤，請重新查詢'
-          })
-        } else {
-          res.json({
-            code: 200,
-            type: 'success',
-            data: doc
-          })
-        }
-      })
-  },
   getNews (req, res, next) {
-    console.log("/news_controller/getNews")
+    console.log('/news_controller/getNews')
     const keyword = req.query.q || ''
     const checkQueryLimit = Number(req.query.limit)
     const limit = isNaN(checkQueryLimit) ? 3 : checkQueryLimit
@@ -40,7 +18,7 @@ module.exports = {
       searchQuery = searchMediaIndex >= 0 ? { media } : {}
     }
     let timeQuery = {}
-    console.log(keyword,"limit:",limit,"page",pageNumber,"time:",time,media)
+    console.log(keyword, 'limit:', limit, 'page', pageNumber, 'time:', time, media)
     switch (time) {
       case 'qdr:h':
         timeQuery = {
@@ -64,7 +42,7 @@ module.exports = {
         break
       default: timeQuery = {}
         break
-    }   
+    }
     if (keyword) {
       News.find(
         {
@@ -108,6 +86,42 @@ module.exports = {
         message: '搜尋新聞關鍵字輸入有誤，請重新查詢'
       })
     }
+  },
+  async searchNews (req, res) {
+    console.log('/news_controller/searchNews')
+    const keyword = req.query.q || ''
+    console.log(keyword + '...')
+    const result = await Elastic.search({
+      index: 'mainmax',
+      body: {
+        query: {
+          match: { content: keyword }
+        }
+      }
+    })
+    res.send(result.body.hits.hits)
+  },
+  getLatestNews (req, res) {
+    let limit = 50
+    if (Object.prototype.hasOwnProperty.call(req.query, 'limit')) {
+      limit = isNaN(Number(req.query.limit)) ? 50 : Number(req.query.limit)
+    }
+    News.find({}, null, { sort: { modified_date: -1 } }).limit(limit)
+      .exec((err, doc) => {
+        if (err) {
+          res.status(500).send({
+            code: 500,
+            type: 'error',
+            message: '搜尋發生錯誤，請重新查詢'
+          })
+        } else {
+          res.json({
+            code: 200,
+            type: 'success',
+            data: doc
+          })
+        }
+      })
   },
   getNewsById (req, res, next) {
     console.log('getNewsById: ' + req.params.id)

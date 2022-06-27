@@ -12,6 +12,7 @@ const mockController = require('../mock')
 const mongoose = require('mongoose')
 const categories = ['政經', '社會', '環境', '運動', '國際', '科技', '生活']
 
+// const config = require('../../config/config')
 // const Redis = require('redis')
 
 // const redisClient = Redis.createClient()

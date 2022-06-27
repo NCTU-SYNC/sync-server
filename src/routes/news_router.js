@@ -4,6 +4,9 @@ const ctrl = require('../controllers/news_controller')
 router.route('/news')
   .get(ctrl.getNews)
 
+router.route('/news/search')
+  .get(ctrl.searchNews)
+
 router.route('/news/latest')
   .get(ctrl.getLatestNews)
 
