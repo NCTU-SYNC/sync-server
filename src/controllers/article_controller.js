@@ -212,12 +212,13 @@ module.exports = {
   },
   searchArticles (req, res, next) {
     const keyword = req.query.q || ''
+    const hashtag = req.query.tag || ''
     const checkQueryLimit = Number(req.query.limit)
     const limit = isNaN(checkQueryLimit) ? 20 : checkQueryLimit
     const pageNumber = isNaN(Number(req.query.page)) ? 0 : Number(req.query.page)
     const time = req.query.tbs
     const category = req.query.category.toString() || ''
-    console.log('searchArticles: ' + keyword + ',' + limit + ',' + category)
+    console.log('searchArticles: ' + keyword + ',' + hashtag + ',' + limit + ',' + category)
     let searchQuery = {}
     if (category) {
       const searchCategoryIndex = categories.indexOf(category)
@@ -267,6 +268,29 @@ module.exports = {
               }
             }
           ],
+          ...timeQuery
+        }, null, { limit: limit, skip: pageNumber > 0 ? pageNumber * 20 : 0, sort: { _id: -1 } })
+        .exec((err, doc) => {
+          if (err || doc.length === 0) {
+            console.error(err)
+            res.status(200).send({
+              code: 404,
+              type: 'error',
+              message: '查無搜尋結果'
+            })
+          } else {
+            res.json({
+              code: 200,
+              type: 'success',
+              data: doc
+            })
+          }
+        })
+    } else if (hashtag) {
+      Article.find(
+        {
+          ...searchQuery,
+          tags: { $in: hashtag },
           ...timeQuery
         }, null, { limit: limit, skip: pageNumber > 0 ? pageNumber * 20 : 0, sort: { _id: -1 } })
         .exec((err, doc) => {
