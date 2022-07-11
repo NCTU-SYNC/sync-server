@@ -446,10 +446,8 @@ module.exports = {
     }
   },
   async updateArticleById (req, res, next) {
-    console.log('updateArticleById: ' + req.body.id)
     try {
       const { id, token, isAnonymous } = req.body
-      console.log(typeof isAnonymous)
       const { uid, name } = await Utils.firebase.verifyIdToken(token)
       const newAuthor = isAnonymous ? { uid, name: '匿名', isAnonymous } : { uid, name, isAnonymous }
       var article = await Article.findById(id).lean()
@@ -459,257 +457,243 @@ module.exports = {
           type: 'error',
           message: '文章的ID輸入有誤，請重新查詢'
         })
-      } else {
-        let checkIfChange = false
-        const updateObj = req.body
-        updateObj.authors = getUpdatedAuthors(updateObj.authors, newAuthor)
-        updateObj.lastUpdatedAt = Date.now()
-        const latestVersionBlocksList = []
-        const articleVersion = await Version.findOne({ articleId: article._id })
+        return
+      }
 
-        // Find block id in update object
-        for (const [index, block] of updateObj.blocks.entries()) {
-          const articleBlock = article.blocks.find((ab) => {
-            if (block._id === undefined) {
-              // There is no _id property in new block
-              return false
-            } else {
-              return ab._id.toString() === block._id.toString()
-            }
-          })
+      let checkIfChange = false
+      const updateObj = req.body
+      updateObj.authors = getUpdatedAuthors(updateObj.authors, newAuthor)
+      updateObj.lastUpdatedAt = Date.now()
+      const latestVersionBlocksList = []
+      const articleVersion = await Version.findOne({ articleId: article._id })
 
-          if (articleBlock) { // if content has been changed
-            console.log('articleBlock')
-            // Find block, check different
-            if (Utils.diff.compareContent(block.content, articleBlock.content)) {
-              checkIfChange = true
-              console.log('diff.compareContent = true')
-              const newContent = new Content({
-                blockId: block._id,
-                articleId: article._id,
-                content: block.content
-              })
-              await newContent.save()
-
-              const newBlock = await Block.findOne({ blockId: block._id })
-              newBlock.revisions.push({
-                updatedAt: new Date(),
-                contentId: newContent._id,
-                blockTitle: block.blockTitle,
-                author: newAuthor,
-                revisionIndex: newBlock.revisions.length + 1
-              })
-              newBlock.authors = getUpdatedAuthors(newBlock.authors, newAuthor)
-              updateObj.blocks[index].authors = getUpdatedAuthors(newBlock.authors, newAuthor)
-              await newBlock.save()
-
-              latestVersionBlocksList.push({
-                blockId: newContent.blockId,
-                contentId: newContent._id,
-                order: 0,
-                revisionIndex: newBlock.revisions.length - 1,
-                authors: newBlock.authors
-              })
-            } else if (block.blockTitle !== articleBlock.blockTitle) { // if only blocktitle has been changed
-              checkIfChange = true
-              console.log('only block title has been changed')
-              const newBlock = await Block.findOne({ blockId: block._id })
-              console.log(newBlock.revisions[newBlock.revisions.length - 1].contentId)
-              newBlock.revisions.push({
-                updatedAt: new Date(),
-                contentId: newBlock.revisions[newBlock.revisions.length - 1].contentId,
-                blockTitle: block.blockTitle,
-                author: newAuthor,
-                revisionIndex: newBlock.revisions.length + 1
-              })
-              newBlock.authors = getUpdatedAuthors(newBlock.authors, newAuthor)
-              updateObj.blocks[index].authors = getUpdatedAuthors(newBlock.authors, newAuthor)
-              await newBlock.save()
-
-              latestVersionBlocksList.push({
-                blockId: block._id,
-                contentId: newBlock.revisions[newBlock.revisions.length - 1].contentId,
-                order: 0,
-                revisionIndex: newBlock.revisions.length - 1,
-                authors: newBlock.authors
-              })
-            } else {
-              console.log('diff.compareContent = false')
-
-              const currentVersion = articleVersion.versions.length - 1
-              const targetCopiedBlock = articleVersion.versions[currentVersion].blocks.find((b) => {
-                if (b.blockId === undefined) {
-                  return false
-                } else {
-                  return b.blockId.toString() === block._id
-                }
-              })
-              if (targetCopiedBlock) {
-                console.log(`find block id: ${block._id}`)
-                latestVersionBlocksList.push(targetCopiedBlock)
-              }
-            }
+      // Find block id in update object
+      for (const [index, block] of updateObj.blocks.entries()) {
+        const articleBlock = article.blocks.find((ab) => {
+          if (block._id === undefined) {
+            // There is no _id property in new block
+            return false
           } else {
+            return ab._id.toString() === block._id.toString()
+          }
+        })
+
+        if (articleBlock) { // if content has been changed
+          // Find block, check different
+          if (Utils.diff.compareContent(block.content, articleBlock.content)) {
             checkIfChange = true
-            console.log('createNewBlock')
-            // { blockId: newContent.blockId, contentId: newContent._id, revisionId: newBlock.revisions[0]._id }
-            const { blockId, contentId } = await createNewBlock(block, article._id, newAuthor)
-            block._id = blockId
+            const newContent = new Content({
+              blockId: block._id,
+              articleId: article._id,
+              content: block.content
+            })
+            await newContent.save()
+
+            const newBlock = await Block.findOne({ blockId: block._id })
+            newBlock.revisions.push({
+              updatedAt: new Date(),
+              contentId: newContent._id,
+              blockTitle: block.blockTitle,
+              author: newAuthor,
+              revisionIndex: newBlock.revisions.length + 1
+            })
+            newBlock.authors = getUpdatedAuthors(newBlock.authors, newAuthor)
+            updateObj.blocks[index].authors = getUpdatedAuthors(newBlock.authors, newAuthor)
+            await newBlock.save()
+
             latestVersionBlocksList.push({
-              blockId,
-              contentId,
-              revisionIndex: 0,
+              blockId: newContent.blockId,
+              contentId: newContent._id,
               order: 0,
-              authors: [newAuthor]
+              revisionIndex: newBlock.revisions.length - 1,
+              authors: newBlock.authors
             })
-          }
-        }
+          } else if (block.blockTitle !== articleBlock.blockTitle) { // if only blocktitle has been changed
+            checkIfChange = true
+            const newBlock = await Block.findOne({ blockId: block._id })
+            newBlock.revisions.push({
+              updatedAt: new Date(),
+              contentId: newBlock.revisions[newBlock.revisions.length - 1].contentId,
+              blockTitle: block.blockTitle,
+              author: newAuthor,
+              revisionIndex: newBlock.revisions.length + 1
+            })
+            newBlock.authors = getUpdatedAuthors(newBlock.authors, newAuthor)
+            updateObj.blocks[index].authors = getUpdatedAuthors(newBlock.authors, newAuthor)
+            await newBlock.save()
 
-        // 檢查是否有更新新聞引用
-        // 過濾使用者傳入的陣列
-        const pureCitations = []
-        const citations = req.body.citations
-        if (citations && Array.isArray(citations)) {
-          for (const c of citations) {
-            if (c.title && c.url) {
-              pureCitations.push({ title: c.title, url: c.url })
-            }
-          }
-        }
-        let onlyTagChange = false
-        // 確認是否有變更標題或是引用
-        if (!checkIfChange) {
-          console.log('The content has not change in article, detect other changes')
-          const detectArticle = await Article.findOne({ _id: id })
-          if (detectArticle.title !== updateObj.title) {
-            console.log('title is changed')
-            checkIfChange = true
-          }
-          if (detectArticle.citations.length !== pureCitations.length) {
-            console.log('citations has changed')
-            checkIfChange = true
+            latestVersionBlocksList.push({
+              blockId: block._id,
+              contentId: newBlock.revisions[newBlock.revisions.length - 1].contentId,
+              order: 0,
+              revisionIndex: newBlock.revisions.length - 1,
+              authors: newBlock.authors
+            })
           } else {
-            const result = pureCitations.every((element, index) => {
-              return element.url === detectArticle.citations[index].url &&
-              element.title === detectArticle.citations[index].title
-            })
-            console.log('compare citations result', result)
-            if (!result) {
-              console.log('citations length is same, but element has changed')
-              checkIfChange = true
-            }
-          }
-          // 確認是否有block被刪除
-          for (const block of detectArticle.blocks) {
-            let blockDeleted = true
-            for (const compareblock of updateObj.blocks) {
-              if (block._id.toString() === compareblock._id.toString()) {
-                blockDeleted = false
-                break
+            const currentVersion = articleVersion.versions.length - 1
+            const targetCopiedBlock = articleVersion.versions[currentVersion].blocks.find((b) => {
+              if (b.blockId === undefined) {
+                return false
+              } else {
+                return b.blockId.toString() === block._id
               }
-            }
-            if (blockDeleted) {
-              console.log('block has been deleted')
-              checkIfChange = true
-              break
-            }
-          }
-          // 確認tag是否被改動
-          if (JSON.stringify(detectArticle.tags) !== JSON.stringify(updateObj.tags)) {
-            onlyTagChange = true
-          }
-        }
-        console.log(onlyTagChange)
-        console.log(`The article has ${checkIfChange ? '' : 'not'} changed`)
-        if (checkIfChange) {
-          const oldArticle = await Article.findOne({ _id: id })
-          const { addedWordCount, deletedWordCount } = await compareArticleByWord(updateObj, oldArticle)
-          const currentVersion = articleVersion.versions.length + 1
-          articleVersion.versions.push({
-            citations: pureCitations,
-            title: req.body.title,
-            author: newAuthor,
-            updatedAt: new Date(),
-            blocks: latestVersionBlocksList,
-            versionIndex: currentVersion,
-            wordsChanged: {
-              added: addedWordCount,
-              deleted: deletedWordCount
-            }
-          })
-          await Version.findOneAndUpdate({ articleId: article._id }, articleVersion, { new: true, upsert: true })
-          const latestNews = new LatestNews({
-            articleId: article._id,
-            updatedAt: new Date()
-          })
-          // 更新最新新聞
-          const latestNewsCount = await LatestNews.find({})
-          var repeatLatestNewsFlag = Boolean(false)
-          for (const news of latestNewsCount) {
-            if (String(news.articleId) === String(latestNews.articleId)) {
-              await LatestNews.findOneAndDelete({ articleId: news.articleId })
-              repeatLatestNewsFlag = true
-              break
-            }
-          }
-          if (repeatLatestNewsFlag === false) {
-            if (latestNewsCount.length >= 10) {
-              await LatestNews.findByIdAndDelete(latestNewsCount[0]._id)
-            }
-          }
-          await latestNews.save()
-
-          Article.findOneAndUpdate({ _id: id }, updateObj, { new: true, upsert: true }, (err, doc) => {
-            if (err) {
-              res.status(200).send({
-                code: 500,
-                type: 'error',
-                message: '更新文章時發生錯誤'
-              })
-              return
-            }
-            res.json({
-              code: 200,
-              type: 'success',
-              data: doc,
-              message: '已成功更新文章'
             })
-            console.log(Utils.article)
-            Utils.article.updateArticleEditedCount(id)
-            Utils.firebase.storeEditArticleRecord(uid, id)
-            Utils.firebase.handleAddUserPoints(uid, 2)
-          })
-        } else if (onlyTagChange) {
-          Article.findOneAndUpdate({ _id: id }, updateObj, { new: true, upsert: true }, (err, doc) => {
-            if (err) {
-              res.status(200).send({
-                code: 500,
-                type: 'error',
-                message: '更新文章時發生錯誤'
-              })
-              return
+            if (targetCopiedBlock) {
+              latestVersionBlocksList.push(targetCopiedBlock)
             }
-            res.json({
-              code: 200,
-              type: 'success',
-              data: doc,
-              message: '已成功更新文章'
-            })
-            // console.log(Utils.article)
-            // Utils.article.updateArticleEditedCount(id)
-            // Utils.firebase.storeEditArticleRecord(uid, id)
-            // Utils.firebase.handleAddUserPoints(uid, 2)
-          })
+          }
         } else {
-          res.status(200).send({
-            code: 500,
-            type: 'error',
-            message: '文章內容與前一版本相符，故無法更新'
+          checkIfChange = true
+          // { blockId: newContent.blockId, contentId: newContent._id, revisionId: newBlock.revisions[0]._id }
+          const { blockId, contentId } = await createNewBlock(block, article._id, newAuthor)
+          block._id = blockId
+          latestVersionBlocksList.push({
+            blockId,
+            contentId,
+            revisionIndex: 0,
+            order: 0,
+            authors: [newAuthor]
           })
         }
       }
+
+      // 檢查是否有更新新聞引用
+      // 過濾使用者傳入的陣列
+      const pureCitations = []
+      const citations = req.body.citations
+      if (citations && Array.isArray(citations)) {
+        for (const c of citations) {
+          if (c.title && c.url) {
+            pureCitations.push({ title: c.title, url: c.url })
+          }
+        }
+      }
+      let onlyTagChange = false
+      // 確認是否有變更標題或是引用
+      if (!checkIfChange) {
+        const detectArticle = await Article.findOne({ _id: id })
+        if (detectArticle.title !== updateObj.title) {
+          checkIfChange = true
+        }
+        if (detectArticle.citations.length !== pureCitations.length) {
+          checkIfChange = true
+        } else {
+          const result = pureCitations.every((element, index) => {
+            return element.url === detectArticle.citations[index].url &&
+            element.title === detectArticle.citations[index].title
+          })
+          if (!result) {
+            checkIfChange = true
+          }
+        }
+
+        // 確認是否有block被刪除
+        for (const block of detectArticle.blocks) {
+          let blockDeleted = true
+          for (const compareblock of updateObj.blocks) {
+            if (block._id.toString() === compareblock._id.toString()) {
+              blockDeleted = false
+              break
+            }
+          }
+          if (blockDeleted) {
+            checkIfChange = true
+            break
+          }
+        }
+
+        // 確認tag是否被改動
+        if (JSON.stringify(detectArticle.tags) !== JSON.stringify(updateObj.tags)) {
+          onlyTagChange = true
+        }
+      }
+
+      if (checkIfChange) {
+        const oldArticle = await Article.findOne({ _id: id })
+        const { addedWordCount, deletedWordCount } = await compareArticleByWord(updateObj, oldArticle)
+        const currentVersion = articleVersion.versions.length + 1
+        articleVersion.versions.push({
+          citations: pureCitations,
+          title: req.body.title,
+          author: newAuthor,
+          updatedAt: new Date(),
+          blocks: latestVersionBlocksList,
+          versionIndex: currentVersion,
+          wordsChanged: {
+            added: addedWordCount,
+            deleted: deletedWordCount
+          }
+        })
+        await Version.findOneAndUpdate({ articleId: article._id }, articleVersion, { new: true, upsert: true })
+        const latestNews = new LatestNews({
+          articleId: article._id,
+          updatedAt: new Date()
+        })
+        // 更新最新新聞
+        const latestNewsCount = await LatestNews.find({})
+        var repeatLatestNewsFlag = Boolean(false)
+        for (const news of latestNewsCount) {
+          if (String(news.articleId) === String(latestNews.articleId)) {
+            await LatestNews.findOneAndDelete({ articleId: news.articleId })
+            repeatLatestNewsFlag = true
+            break
+          }
+        }
+        if (repeatLatestNewsFlag === false) {
+          if (latestNewsCount.length >= 10) {
+            await LatestNews.findByIdAndDelete(latestNewsCount[0]._id)
+          }
+        }
+        await latestNews.save()
+
+        // FIXME: In updateObj, there's no 'authors' array in new blocks.
+        Article.findOneAndUpdate({ _id: id }, updateObj, { new: true, upsert: true }, (err, doc) => {
+          if (err) {
+            res.status(200).send({
+              code: 500,
+              type: 'error',
+              message: '更新文章時發生錯誤'
+            })
+            return
+          }
+          res.json({
+            code: 200,
+            type: 'success',
+            data: doc,
+            message: '已成功更新文章'
+          })
+          Utils.article.updateArticleEditedCount(id)
+          Utils.firebase.storeEditArticleRecord(uid, id)
+          Utils.firebase.handleAddUserPoints(uid, 2)
+        })
+      } else if (onlyTagChange) {
+        Article.findOneAndUpdate({ _id: id }, updateObj, { new: true, upsert: true }, (err, doc) => {
+          if (err) {
+            res.status(200).send({
+              code: 500,
+              type: 'error',
+              message: '更新文章時發生錯誤'
+            })
+            return
+          }
+          res.json({
+            code: 200,
+            type: 'success',
+            data: doc,
+            message: '已成功更新文章'
+          })
+          // Utils.article.updateArticleEditedCount(id)
+          // Utils.firebase.storeEditArticleRecord(uid, id)
+          // Utils.firebase.handleAddUserPoints(uid, 2)
+        })
+      } else {
+        res.status(200).send({
+          code: 500,
+          type: 'error',
+          message: '文章內容與前一版本相符，故無法更新'
+        })
+      }
     } catch (error) {
-      console.log(error)
       res.status(200).send({
         code: 500,
         type: 'error',
