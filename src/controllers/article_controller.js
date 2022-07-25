@@ -446,20 +446,46 @@ module.exports = {
     }
   },
   async updateArticleById (req, res, next) {
-    try {
-      const { id, token, isAnonymous } = req.body
-      const { uid, name } = await Utils.firebase.verifyIdToken(token)
-      const newAuthor = isAnonymous ? { uid, name: '匿名', isAnonymous } : { uid, name, isAnonymous }
-      var article = await Article.findById(id).lean()
-      if (article === undefined) {
-        res.status(200).send({
-          code: 500,
-          type: 'error',
-          message: '文章的ID輸入有誤，請重新查詢'
-        })
-        return
-      }
+    const { id, token, isAnonymous } = req.body
+    if (
+      id === undefined ||
+      token === undefined ||
+      isAnonymous === undefined
+    ) {
+      res.status(400).send({
+        code: 400,
+        type: 'body-error',
+        message: '請求資料內容有誤'
+      })
+      next()
+    }
 
+    let uid, name
+    try {
+      ({ uid, name } = await Utils.firebase.verifyIdToken(token))
+    } catch (error) {
+      console.warn('Firebase Auth Error', error)
+      res.status(401).send({
+        code: 401,
+        type: 'authentication-error',
+        message: '登入失敗或逾時'
+      })
+      next()
+    }
+
+    const newAuthor = isAnonymous ? { uid, name: '匿名', isAnonymous } : { uid, name, isAnonymous }
+
+    const article = await Article.findById(id).lean()
+    if (article === undefined) {
+      res.status(400).send({
+        code: 400,
+        type: 'body-error',
+        message: '文章的ID輸入有誤，請重新查詢'
+      })
+      next()
+    }
+
+    try {
       let checkIfChange = false
       const updateObj = req.body
       updateObj.authors = getUpdatedAuthors(updateObj.authors, newAuthor)
@@ -467,16 +493,18 @@ module.exports = {
       const latestVersionBlocksList = []
       const articleVersion = await Version.findOne({ articleId: article._id })
 
+      const findArticle = (id) => {
+        // if id is undefined, no need to search
+        if (id === undefined) return undefined
+
+        article.blocks.find((ab) => {
+          return ab._id.toString() === id.toString()
+        })
+      }
+
       // Find block id in update object
       for (const [index, block] of updateObj.blocks.entries()) {
-        const articleBlock = article.blocks.find((ab) => {
-          if (block._id === undefined) {
-            // There is no _id property in new block
-            return false
-          } else {
-            return ab._id.toString() === block._id.toString()
-          }
-        })
+        const articleBlock = findArticle(block._id)
 
         if (articleBlock) { // if content has been changed
           // Find block, check different
@@ -497,7 +525,9 @@ module.exports = {
               author: newAuthor,
               revisionIndex: newBlock.revisions.length + 1
             })
+
             newBlock.authors = getUpdatedAuthors(newBlock.authors, newAuthor)
+
             updateObj.blocks[index].authors = getUpdatedAuthors(newBlock.authors, newAuthor)
             await newBlock.save()
 
@@ -647,7 +677,6 @@ module.exports = {
         }
         await latestNews.save()
 
-        // FIXME: In updateObj, there's no 'authors' array in new blocks.
         Article.findOneAndUpdate({ _id: id }, updateObj, { new: true, upsert: true }, (err, doc) => {
           if (err) {
             res.status(200).send({
@@ -670,7 +699,7 @@ module.exports = {
       } else if (onlyTagChange) {
         Article.findOneAndUpdate({ _id: id }, updateObj, { new: true, upsert: true }, (err, doc) => {
           if (err) {
-            res.status(200).send({
+            res.status(500).send({
               code: 500,
               type: 'error',
               message: '更新文章時發生錯誤'
@@ -688,14 +717,14 @@ module.exports = {
           // Utils.firebase.handleAddUserPoints(uid, 2)
         })
       } else {
-        res.status(200).send({
-          code: 500,
-          type: 'error',
+        res.status(406).send({
+          code: 406,
+          type: 'body-error',
           message: '文章內容與前一版本相符，故無法更新'
         })
       }
     } catch (error) {
-      res.status(200).send({
+      res.status(500).send({
         code: 500,
         type: 'error',
         message: error.message
