@@ -547,6 +547,7 @@ module.exports = {
           // { blockId: newContent.blockId, contentId: newContent._id, revisionId: newBlock.revisions[0]._id }
           const { blockId, contentId } = await createNewBlock(block, article._id, newAuthor)
           block._id = blockId
+          updateObj.blocks[index].authors = [newAuthor]
           latestVersionBlocksList.push({
             blockId,
             contentId,
