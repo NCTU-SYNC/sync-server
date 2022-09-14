@@ -1,0 +1,16 @@
+openapi: 3.1.0
+
+info:
+  version: 2.0.0-beta.1
+  title: sync.muilab.org
+  description: api spec for SYNC frontend SPA
+
+servers:
+  - url: "https://sync.muilab.org/api/v2"
+
+paths:
+  "/articles/feed":
+    $ref: "paths/article/feed.yaml"
+# components:
+#   # TODO: security schemes
+#   securitySchemes:

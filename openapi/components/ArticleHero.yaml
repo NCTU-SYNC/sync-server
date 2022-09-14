@@ -1,0 +1,9 @@
+description: article data for hero card
+type: object
+
+properties:
+  info:
+    $ref: "ArticleInfo.yaml"
+
+  timeline:
+    $ref: "ArticleTimeline.yaml"

@@ -1,0 +1,38 @@
+type: object
+properties:
+  latests:
+    type: array
+    items:
+      $ref: "ArticleInfo.yaml"
+
+  hero:
+    description: the article for hero card
+    type: object
+    $ref: "ArticleHero.yaml"
+
+  requireEdit:
+    type: array
+    items:
+      $ref: "ArticleInfo.yaml"
+
+  mainSection:
+    type: object
+
+    properties:
+      subject:
+        type: string
+
+      articles:
+        type: array
+        items:
+          $ref: "ArticleInfo.yaml"
+
+  hot:
+    type: array
+    items:
+      $ref: "ArticleInfo.yaml"
+
+  tagRecommend:
+    type: array
+    items:
+      type: string

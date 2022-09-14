@@ -1,0 +1,32 @@
+type: object
+
+properties:
+  id:
+    type: string
+    readOnly: true
+
+  title:
+    type: string
+    example: title
+
+  tags:
+    type: array
+    default: []
+
+  category:
+    type: string
+    default: "Other"
+
+  cardImageURI:
+    description: links to card image
+    type: string
+    format: uri
+    readOnly: true
+
+  createdTime:
+    type: string
+    format: date-time
+
+required:
+  - id
+  - title

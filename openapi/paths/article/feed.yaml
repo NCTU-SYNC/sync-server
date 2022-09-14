@@ -1,0 +1,15 @@
+get:
+  tags:
+    - Article
+  summary: Feed for home page
+  operationId: articleGetFeed
+  responses:
+    200:
+      description: Success
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/NewsFeed.yaml"
+
+    404:
+      description: No Articles Found

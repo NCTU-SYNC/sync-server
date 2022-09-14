@@ -1,0 +1,17 @@
+type: array
+items:
+  type: object
+
+  properties:
+    blockTitle:
+      type: string
+
+    blockDateTime:
+      type: string
+      format: date-time
+
+    content:
+      type: string
+
+    timeEnable:
+      type: boolean
