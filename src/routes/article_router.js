@@ -13,6 +13,9 @@ router.route('/article')
 router.route('/article')
   .put(ctrl.updateArticleById)
 
+router.route('/article/section')
+  .post(ctrl.updateArticleMetaById)
+
 router.route('/article/:id/authors')
   .get(ctrl.getArticleAuthors)
 

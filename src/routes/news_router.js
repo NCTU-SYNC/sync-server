@@ -7,6 +7,9 @@ router.route('/news')
 router.route('/news/latest')
   .get(ctrl.getLatestNews)
 
+router.route('/news/admin')
+  .get(ctrl.getLatestNewsAdmin)
+
 router.route('/news/:id')
   .get(ctrl.getNewsById)
 

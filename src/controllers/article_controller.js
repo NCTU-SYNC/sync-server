@@ -10,6 +10,7 @@ const { MODE } = require('../utils/constant')
 const moment = require('moment')
 const mockController = require('../mock')
 const mongoose = require('mongoose')
+const updateController = require('./update_controller')
 const categories = ['政經', '社會', '環境', '運動', '國際', '科技', '生活']
 
 const isExistedAuthor = (originalAuthors, targetAuthor) => {
@@ -187,7 +188,6 @@ module.exports = {
             })
           } else {
             const latestNewsCount = await LatestNews.find({}).sort({ _id: -1 })
-            console.log(latestNewsCount)
             const doc2 = []
             var i = 0
             for (const latestNews of latestNewsCount) {
@@ -790,5 +790,21 @@ module.exports = {
       type: 'success',
       data: doc
     })
-  }
+  },
+  async updateArticleMetaById(req, res, next) {
+    try{
+      if(req.body.hasOwnProperty('admin')){
+        updateController.getAndUpdateArticleById(req, res, next)
+      }
+      else{
+        res.status(404).send({
+          code: 404,
+          type: 'error',
+          message: "你沒有權限做更改"
+        })
+      }
+    }catch(error){
+      console.log(error)
+    }
+  },
 }

@@ -1,5 +1,6 @@
 const router = require('express').Router()
 const ctrl = require('../controllers/auth_controller')
+const adminCtrl = require('../controllers/admin_controller')
 
 router.route('/login')
   .post(ctrl.login)
@@ -24,5 +25,14 @@ router.route('/profile/subscribe')
 
 router.route('/profile/article')
   .post(ctrl.getArticlesInfo)
+
+router.route('/userlist')
+  .get(adminCtrl.getUnion)
+
+router.route('/userlist/profile')
+  .post(adminCtrl.getCertainUserProfile)
+
+router.route('/userpoint')
+  .get(adminCtrl.getPoints)
 
 module.exports = router
