@@ -241,6 +241,11 @@ module.exports = {
           lastUpdatedAt: { $gte: moment().subtract(1, 'weeks').toDate() }
         }
         break
+      case 'qdr:m':
+        timeQuery = {
+          lastUpdatedAt: { $gte: moment().subtract(1, 'months').toDate() }
+        }
+        break
       case 'qdr:y':
         timeQuery = {
           lastUpdatedAt: { $gte: moment().subtract(1, 'years').toDate() }
