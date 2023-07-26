@@ -19,7 +19,7 @@ const auth = {
         code: 200,
         type: 'success',
         message: '已成功登入',
-        data: { nameModTime: doc.data()["nameModTime"] }
+        data: { nameModTime: doc.data().nameModTime }
       })
     } catch (error) {
       console.log(error)
@@ -92,7 +92,7 @@ const auth = {
       })
     }
   },
-  async updateNameModTime(req, res) {
+  async updateNameModTime (req, res) {
     console.log('auth/getNameModTime')
     const token = req.body.token
     try {
@@ -103,14 +103,14 @@ const auth = {
       // append current time to nameModTime array
       const time = [
         // if nameModTime is not exist, set it to []
-        ...(data.hasOwnProperty("nameModTime") ? data.nameModTime : []), 
+        ...(data.hasOwnProperty('nameModTime') ? data.nameModTime : []),
         moment()
       ].slice(-2)
       if (!doc.exists) {
         throw new Error('No user found')
       }
       await userRef.update({
-        nameModTime: time,
+        nameModTime: time
       }, { merge: true })
 
       res.json({
@@ -156,20 +156,58 @@ const auth = {
       })
     }
   },
+  async getPreferences (req, res) {
+    const { token } = req.query
+    try {
+      const { uid } = await Utils.firebase.verifyIdToken(token)
+      const userRef = firebase.db.collection('preferences').doc(uid)
+      const doc = await userRef.get()
+
+      if (!doc.exists) {
+        const defaultData = {
+          editedNotification: false,
+          isAnonymous: false,
+          subscribedNotification: false
+        }
+
+        await userRef.set(defaultData, { merge: true })
+
+        res.json({
+          code: 200,
+          type: 'success',
+          data: defaultData
+        })
+        return
+      }
+
+      res.json({
+        code: 200,
+        type: 'success',
+        data: doc.data()
+      })
+    } catch (error) {
+      console.log(error)
+      res.status(500).send({
+        code: 500,
+        type: 'error',
+        data: error
+      })
+    }
+  },
   async updatePref (req, res) {
     console.log('auth/updateProfile')
     const { token, payload } = req.body
     try {
       const { uid } = await Utils.firebase.verifyIdToken(token)
       const userRef = firebase.db.collection('preferences').doc(uid)
-      const doc = await userRef.get();
+      const doc = await userRef.get()
       if (!payload.hasOwnProperty('preferences')) {
         throw new Error('No preferences found in payload')
       }
       if (!doc.exists) {
-        userRef.set(payload.preferences, { merge: true })
+        userRef.set(payload.preferences.payload, { merge: true })
       }
-      await userRef.update(payload.preferences, { merge: true })
+      await userRef.update(payload.preferences.payload, { merge: true })
       res.json({
         code: 200,
         type: 'success',

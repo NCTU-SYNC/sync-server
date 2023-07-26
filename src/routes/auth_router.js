@@ -13,8 +13,11 @@ router.route('/profile/updateNameModTime')
 router.route('/profile/pref')
   .post(ctrl.getPref)
 
-router.route('/profile/update/pref')
-  .post(ctrl.updatePref)
+router.route('/profile/preference')
+  .get(ctrl.getPreferences)
+
+router.route('/profile/preference')
+  .put(ctrl.updatePref)
 
 router.route('/profile/view')
   .post(ctrl.updateViewArticleToFirestore)
