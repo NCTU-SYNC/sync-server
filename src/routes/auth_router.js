@@ -7,6 +7,9 @@ router.route('/login')
 router.route('/profile')
   .post(ctrl.getProfileById)
 
+router.route('/profile/displayName')
+  .put(ctrl.updateDisplayName)
+
 router.route('/profile/updateNameModTime')
   .post(ctrl.updateNameModTime)
 

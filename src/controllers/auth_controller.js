@@ -92,6 +92,61 @@ const auth = {
       })
     }
   },
+  async updateDisplayName (req, res) {
+    const { token, payload } = req.body
+
+    try {
+      const { uid } = await Utils.firebase.verifyIdToken(token)
+      const userRef = firebase.db.collection('users').doc(uid)
+      const doc = await userRef.get()
+      if (!doc.exists) {
+        throw new Error('No user found')
+      }
+
+      const data = doc.data()
+
+      /* Use `admin.firestore.FieldValue.serverTimestamp()` instaed of `Date.now()` because
+       * `Date.now()` is dependent on server's device time, which can be easily changed
+       * by the server owner.
+       *
+       * Use `lastModTime_0` and `lastModTime_1` because `admin.firestore.FieldValue.serverTimestamp()`
+       * cannot be used inside of an array. (`lastModTime_0` is the earliest time user
+       * changed their name.)
+       */
+      if (Object.hasOwn(data, 'lastModTime_0')) {
+        const currentTime = moment(admin.firestore.Timestamp.now())
+        const lastModTime = data.lastModTime_0
+        const nextAvailableTime = moment(lastModTime).add(30, 'days')
+
+        if (nextAvailableTime.isAfter(currentTime)) {
+          throw new Error(`${nextAvailableTime.toDate()}`)
+        }
+      } else if (Object.hasOwn(data, 'lastModTime_1')) {
+        await userRef.update({
+          lastModTime_0: data.lastModTime_1,
+          lastModTime_1: admin.firestore.FieldValue.serverTimestamp(),
+          displayName: payload.newName
+        }, { merge: true })
+      } else {
+        await userRef.update({
+          lastModTime_1: admin.firestore.FieldValue.serverTimestamp(),
+          displayName: payload.newName
+        }, { merge: true })
+      }
+
+      res.json({
+        code: 200,
+        type: 'success',
+        data: {}
+      })
+    } catch (error) {
+      res.json({
+        code: 500,
+        type: 'error',
+        data: error.message
+      })
+    }
+  },
   async updateNameModTime (req, res) {
     console.log('auth/getNameModTime')
     const token = req.body.token
