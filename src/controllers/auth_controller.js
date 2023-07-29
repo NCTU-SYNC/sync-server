@@ -122,16 +122,26 @@ const auth = {
           throw new Error(`${nextAvailableTime.toDate()}`)
         }
       } else if (Object.hasOwn(data, 'lastModTime_1')) {
-        await userRef.update({
+        const updateModTime = userRef.update({
           lastModTime_0: data.lastModTime_1,
-          lastModTime_1: admin.firestore.FieldValue.serverTimestamp(),
-          displayName: payload.newName
+          lastModTime_1: admin.firestore.FieldValue.serverTimestamp()
         }, { merge: true })
+
+        const updateDisplayName = admin.auth().updateUser(uid, {
+          displayName: payload.newName
+        })
+
+        await Promise.all([updateModTime, updateDisplayName])
       } else {
-        await userRef.update({
-          lastModTime_1: admin.firestore.FieldValue.serverTimestamp(),
-          displayName: payload.newName
+        const updateModTime = userRef.update({
+          lastModTime_0: admin.firestore.FieldValue.serverTimestamp()
         }, { merge: true })
+
+        const updateDisplayName = admin.auth().updateUser(uid, {
+          displayName: payload.newName
+        })
+
+        await Promise.all([updateModTime, updateDisplayName])
       }
 
       res.json({
