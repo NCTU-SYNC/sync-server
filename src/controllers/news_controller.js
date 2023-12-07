@@ -32,7 +32,7 @@ module.exports = {
     const limit = isNaN(checkQueryLimit) ? 20 : checkQueryLimit
     const pageNumber = isNaN(Number(req.query.page)) ? 0 : Number(req.query.page)
     const time = req.query.tbs
-    const media = req.query.media.toString() || ''
+    const media = req.query.media ? req.query.media.toString() : '';
     let searchQuery = {}
     if (media) {
       const searchMediaIndex = mediaSources.indexOf(media)
