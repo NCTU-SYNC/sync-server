@@ -217,7 +217,7 @@ module.exports = {
     const limit = isNaN(checkQueryLimit) ? 20 : checkQueryLimit
     const pageNumber = isNaN(Number(req.query.page)) ? 0 : Number(req.query.page)
     const time = req.query.tbs
-    const category = req.query.category.toString() || ''
+    const category = req.query.category ? req.query.category.toString() : '';
     console.log('searchArticles: ' + keyword + ',' + hashtag + ',' + limit + ',' + category)
     let searchQuery = {}
     if (category) {
