@@ -776,7 +776,11 @@ module.exports = {
         message: '已成功抓取作者'
       })
     } catch (error) {
-      console.log(error)
+        res.status(500).send({
+        code: 500,
+        type: 'error',
+        message: '文章的ID輸入有誤，請重新查詢'
+      })
     }
   },
   async getPopularArticle (req, res, next) {
