@@ -5,56 +5,79 @@ const { toInteger } = require('../utils/number')
 
 module.exports = {
   async getArticleVersionById (req, res, next) {
-    console.log(`getArticleVersionById: ${req.params.id}, versionIndex: ${req.query.versionIndex}`)
-    // const articleId = req.params.id
-    const versionInstance = await Version.findOne({ articleId: req.params.id })
-    const versionIndexStr = req.query.versionIndex
-    const versionsCount = versionInstance.versions.length
-    let versionIndex = toInteger(versionIndexStr, versionsCount) - 1
-    console.log(versionIndex, versionsCount)
-    if (versionIndex >= versionsCount || versionIndex < 0) {
-      versionIndex = versionsCount - 1
-    }
-    console.log(versionIndex)
-    const currentViewVersion = versionInstance.versions[versionIndex]
-    const currentContent = []
-    for (const block of currentViewVersion.blocks) {
-      // get content which under contentInstance
-      const { content, blockId } = await Content.findOne({ _id: block.contentId })
-      const currentBlock = await Block.findOne({ blockId })
-      const blockInfo = currentBlock.revisions[block.revisionIndex]
-      if (content) {
-        currentContent.push({ content, blockId, blockInfo })
+    // Added "try catch error" to getArticleVersionById
+    try{ 
+      console.log(`getArticleVersionById: ${req.params.id}, versionIndex: ${req.query.versionIndex}`)
+      // const articleId = req.params.id
+      const versionInstance = await Version.findOne({ articleId: req.params.id })
+
+      // Log an error if the article ID does not exist
+      if (!versionInstance) { 
+        console.error('Article ID does not exist')
+        return res.status(404).send({
+          code: 404,
+          type: 'error',
+          message: 'Article ID does not exist'
+        })
       }
-    }
 
-    let from, to
-    if (versionIndex % 10 === 0) {
-      from = versionIndex / 10
-      to = (versionIndex / 10) + 10
-    } else {
-      from = Math.floor((versionIndex + 1) / 10) * 10
-      to = Math.ceil((versionIndex + 1) / 10) * 10
+      const versionIndexStr = req.query.versionIndex
+      const versionsCount = versionInstance.versions.length
+      let versionIndex = toInteger(versionIndexStr, versionsCount) - 1
+      console.log(versionIndex, versionsCount)
+      if (versionIndex >= versionsCount || versionIndex < 0) {
+        versionIndex = versionsCount - 1
+      }
+      console.log(versionIndex)
+      const currentViewVersion = versionInstance.versions[versionIndex]
+      const currentContent = []
+      for (const block of currentViewVersion.blocks) {
+        // get content which under contentInstance
+        const { content, blockId } = await Content.findOne({ _id: block.contentId })
+        const currentBlock = await Block.findOne({ blockId })
+        const blockInfo = currentBlock.revisions[block.revisionIndex]
+        if (content) {
+          currentContent.push({ content, blockId, blockInfo })
+        }
+      }
+  
+      let from, to
+      if (versionIndex % 10 === 0) {
+        from = versionIndex / 10
+        to = (versionIndex / 10) + 10
+      } else {
+        from = Math.floor((versionIndex + 1) / 10) * 10
+        to = Math.ceil((versionIndex + 1) / 10) * 10
+      }
+      const versionsData = versionInstance.versions.reverse().slice(
+        from, to
+      )
+  
+      const doc = {
+        currentVersion: {
+          title: currentViewVersion.title,
+          blocks: currentContent
+        },
+        versions: versionsData,
+        from,
+        to,
+        length: versionsCount
+      }
+      res.status(200).send({
+        code: 200,
+        type: 'success',
+        data: doc
+      })
+    } 
+    // Error Response
+    catch(error){
+      console.error('Error:', error.message)
+      return res.status(500).send({
+        code: 500,
+        type: 'error',
+        message: 'Internal server error'
+      })
     }
-    const versionsData = versionInstance.versions.reverse().slice(
-      from, to
-    )
-
-    const doc = {
-      currentVersion: {
-        title: currentViewVersion.title,
-        blocks: currentContent
-      },
-      versions: versionsData,
-      from,
-      to,
-      length: versionsCount
-    }
-    res.status(200).send({
-      code: 200,
-      type: 'success',
-      data: doc
-    })
   },
   async getArticleVersionsById (req, res, next) {
     console.log(`getArticleVersionsById: ${req.params.id}, limit: ${req.query.limit}, page: ${req.query.page}`)
