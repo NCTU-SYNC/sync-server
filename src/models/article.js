@@ -11,7 +11,7 @@ const blockSchema = new mongoose.Schema({
   },
   blockDateTime: {
     type: Date,
-    required: true
+    required: false
   },
   timeEnable: {
     type: Boolean
@@ -22,6 +22,10 @@ const blockSchema = new mongoose.Schema({
   authors: {
     type: Array,
     required: true
+  },
+  isdeleted: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -68,7 +72,11 @@ const articleSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  blocks: [blockSchema]
+  blocks: [blockSchema],
+  isdeleted: {
+    type: Boolean,
+    default: false
+  }
 })
 
 const article = mongoose.model('Article', articleSchema, 'Articles')

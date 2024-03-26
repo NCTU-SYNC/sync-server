@@ -21,7 +21,8 @@
     "jsondiffpatch": "^0.4.1",
     "moment": "^2.29.1",
     "mongoose": "^5.9.26",
-    "nodemon": "^1.19.4"
+    "nodemon": "^1.19.4",
+    "redis": "3.1.0"
   },
   "devDependencies": {
     "eslint": "^6.5.1",

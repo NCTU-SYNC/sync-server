@@ -22,6 +22,10 @@ const revisionSchema = new mongoose.Schema({
   revisionIndex: {
     type: Number,
     required: true
+  },
+  isdeleted: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -38,7 +42,11 @@ const blockSchema = new mongoose.Schema({
     type: Array,
     required: true
   },
-  revisions: [revisionSchema]
+  revisions: [revisionSchema],
+  isdeleted: {
+    type: Boolean,
+    default: false
+  }
 })
 
 const block = mongoose.model('Block', blockSchema, 'Blocks')
